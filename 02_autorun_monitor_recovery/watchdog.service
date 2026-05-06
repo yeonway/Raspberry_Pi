@@ -1,0 +1,15 @@
+[Unit]
+Description=Raspberry Pi Service Watchdog
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/user/Raspberry_Pi/02_autorun_monitor_recovery
+ExecStart=/bin/bash /home/user/Raspberry_Pi/02_autorun_monitor_recovery/watchdog.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+{
+  "dashboard": {
+    "service": "dashboard.service",
+    "desired": true
+  },
+  "minecraft": {
+    "service": "minecraft.service",
+    "desired": true
+  }
+}

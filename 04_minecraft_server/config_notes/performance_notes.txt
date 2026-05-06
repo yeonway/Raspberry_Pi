@@ -1,0 +1,5 @@
+Performance notes are now covered by:
+
+- 04_minecraft_server/README.md
+- 04_minecraft_server/paper_setup.md
+- 04_minecraft_server/spark_setup.md

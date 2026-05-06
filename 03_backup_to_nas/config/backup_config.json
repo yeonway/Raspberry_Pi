@@ -1,0 +1,40 @@
+{
+  "source_paths": [
+    "01_web_dashboard_fastapi",
+    "02_autorun_monitor_recovery",
+    "03_backup_to_nas",
+    "04_minecraft_server",
+    "05_raspberrypi_setup_test",
+    "06_security_external_access",
+    "ai"
+  ],
+  "backup_dir": "03_backup_to_nas/backups",
+  "keep_latest": 5,
+  "exclude_dirs": [
+    ".venv",
+    "__pycache__",
+    "node_modules",
+    ".git",
+    ".gradle",
+    ".kotlin",
+    "build",
+    "logs",
+    "backups",
+    "백업"
+  ],
+  "exclude_files": [
+    ".env",
+    "local.properties",
+    "ngrok.yml",
+    "*.apk",
+    "*.aab",
+    "*.db",
+    "*.jks",
+    "*.keystore",
+    "*.hprof",
+    "*.pyc",
+    "*.log",
+    "*.tmp",
+    "*.sanitized"
+  ]
+}

@@ -1,0 +1,7 @@
+Dashboard auth plan is now covered by:
+
+- 06_security_external_access/security_policy.md
+- 06_security_external_access/token_management.md
+- 01_web_dashboard_fastapi/README.md
+
+Keep real passwords and tokens in .env only.

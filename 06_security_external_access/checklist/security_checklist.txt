@@ -1,0 +1,7 @@
+Security checklist is now covered by:
+
+- 06_security_external_access/security_policy.md
+- 06_security_external_access/phone_ai_bridge_connection.md
+- 06_security_external_access/token_management.md
+
+Phone AI Bridge is a local AI/RAG device, not a backup storage target.

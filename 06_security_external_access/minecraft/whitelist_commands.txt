@@ -1,0 +1,24 @@
+Minecraft whitelist / OP 관리 메모
+
+server.properties 권장값:
+white-list=true
+enforce-whitelist=true
+online-mode=true
+enable-rcon=false
+
+서버 콘솔 명령어:
+whitelist on
+whitelist add 닉네임
+whitelist remove 닉네임
+whitelist list
+whitelist reload
+
+관리자 권한:
+op 닉네임
+deop 닉네임
+
+주의:
+- OP는 최소 인원만 부여
+- 친구 닉네임 철자 확인
+- 모르는 사람 닉네임 추가 금지
+- 서버 주소는 외부 공개 금지

@@ -1,0 +1,16 @@
+[Unit]
+Description=Minecraft Paper Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=user
+WorkingDirectory=/home/user/Raspberry_Pi/04_minecraft_server
+ExecStart=/usr/bin/java -Xms1G -Xmx4G -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+DisableExplicitGC -jar paper.jar nogui
+Restart=on-failure
+RestartSec=10
+SuccessExitStatus=0 143
+
+[Install]
+WantedBy=multi-user.target

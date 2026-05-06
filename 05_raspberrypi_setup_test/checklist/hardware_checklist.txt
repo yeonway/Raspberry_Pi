@@ -1,0 +1,5 @@
+Hardware checklist is now covered by:
+
+- 05_raspberrypi_setup_test/hardware_checklist.md
+- 05_raspberrypi_setup_test/os_setup_checklist.md
+- 05_raspberrypi_setup_test/stress_test_checklist.md
