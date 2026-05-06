@@ -1,6 +1,6 @@
 # Phone AI Bridge Connection
 
-Android `ai` 폴더는 Phone AI Bridge 앱입니다. 이 앱은 백업 저장소가 아니라 AI/RAG 장치입니다.
+Android `06-1_phone_ai_bridge_android` 폴더는 Phone AI Bridge 앱입니다. 이 앱은 백업 저장소가 아니라 AI/RAG 장치입니다.
 
 ## 1. 폰 앱에서 IP 확인
 

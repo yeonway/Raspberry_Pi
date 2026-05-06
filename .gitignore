@@ -48,9 +48,9 @@ paper.jar
 06_security_external_access/logs/
 06_security_external_access/config/ngrok.yml
 
-ai/local.properties
-ai/*.hprof
-ai/.gradle/
-ai/.kotlin/
-ai/build/
-ai/app/build/
+06-1_phone_ai_bridge_android/local.properties
+06-1_phone_ai_bridge_android/*.hprof
+06-1_phone_ai_bridge_android/.gradle/
+06-1_phone_ai_bridge_android/.kotlin/
+06-1_phone_ai_bridge_android/build/
+06-1_phone_ai_bridge_android/app/build/

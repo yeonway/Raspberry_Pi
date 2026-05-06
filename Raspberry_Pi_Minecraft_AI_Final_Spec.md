@@ -18,6 +18,7 @@ Raspberry Pi 5에서 친구 전용 Minecraft Paper 서버를 안정적으로 운
 
 ### Android Phone
 - Phone AI Bridge Android 앱
+- 프로젝트 폴더: `06-1_phone_ai_bridge_android`
 - Ktor 로컬 서버
 - 내부 IP 표시
 - Token 인증

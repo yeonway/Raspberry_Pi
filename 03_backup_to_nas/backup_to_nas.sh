@@ -138,7 +138,7 @@ run_or_print tar \
   --exclude='*.hprof' \
   -czf "$archive" \
   -C "$PROJECT_ROOT" \
-  01_web_dashboard_fastapi 02_autorun_monitor_recovery 03_backup_to_nas 04_minecraft_server 05_raspberrypi_setup_test 06_security_external_access ai
+  01_web_dashboard_fastapi 02_autorun_monitor_recovery 03_backup_to_nas 04_minecraft_server 05_raspberrypi_setup_test 06_security_external_access 06-1_phone_ai_bridge_android
 
 if [ "$BACKUP_DRY_RUN" = "false" ]; then
   size_bytes="$(stat -c '%s' "$archive")"

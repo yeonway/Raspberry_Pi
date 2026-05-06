@@ -27,7 +27,7 @@ Raspberry Pi 5에서 Paper Minecraft 서버와 FastAPI 대시보드를 운영하
 
 ## 현재 완료된 것
 
-- Android `ai` 폴더는 Phone AI Bridge 1차 MVP 완료 상태로 본다.
+- `06-1_phone_ai_bridge_android` 폴더는 Phone AI Bridge 1차 MVP 완료 상태로 본다.
 - FastAPI 대시보드 초안은 로그인, 상태 확인, 로그 조회, Minecraft 제어 요청, 백업 요청 API를 포함한다.
 - systemd 서비스 초안과 watchdog 초안이 정리되어 있다.
 - Minecraft Paper 서버 폴더에는 실행 파일과 기본 설정 초안이 있다.
@@ -54,7 +54,7 @@ Raspberry Pi 5에서 Paper Minecraft 서버와 FastAPI 대시보드를 운영하
 - `04_minecraft_server`: Paper 서버 설정, Java/Paper/spark 안내
 - `05_raspberrypi_setup_test`: 라즈베리파이 하드웨어, OS, 부하 테스트 체크리스트
 - `06_security_external_access`: 보안 정책, Phone AI Bridge 연결, 토큰 관리
-- `ai`: Android Phone AI Bridge 앱
+- `06-1_phone_ai_bridge_android`: Android Phone AI Bridge 앱
 
 ## 제외된 기능
 
