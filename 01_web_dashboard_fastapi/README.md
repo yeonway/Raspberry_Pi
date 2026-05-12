@@ -60,3 +60,57 @@ python scripts/make_password_hash.py "새비밀번호"
 - `.env`는 Git에 포함하지 않습니다.
 - Windows에서 만든 `.venv`는 Raspberry Pi에서 재사용하지 않습니다.
 - systemd 제어는 Raspberry Pi에서 sudo 권한과 서비스 등록을 마친 뒤에만 켭니다.
+## Minecraft chat AI event flow
+
+Paper plugin chat events are sent to `POST /event` with `X-Event-Token`. FastAPI stores the event, queues AI questions in order, calls Android Phone AI Bridge `/api/ask`, then sends the answer back to Minecraft through RCON `say`.
+
+Required `.env` values:
+
+```env
+DASHBOARD_EVENT_TOKEN=PUT_EVENT_TOKEN_HERE
+DASHBOARD_ENABLE_AI_EVENT_WORKER=true
+PHONE_AI_BASE_URL=http://PHONE_IP:8765
+PHONE_AI_API_TOKEN=PUT_PHONE_AI_TOKEN_HERE
+MINECRAFT_RCON_HOST=127.0.0.1
+MINECRAFT_RCON_PORT=25575
+MINECRAFT_RCON_PASSWORD=PUT_RCON_PASSWORD_HERE
+```
+
+Useful API checks:
+
+```bash
+curl -H "X-Event-Token: $DASHBOARD_EVENT_TOKEN" http://127.0.0.1:8000/event/status
+```
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/event \
+  -H "X-Event-Token: $DASHBOARD_EVENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"chat_ai","player_name":"Steve","player_uuid":"test","message":"!ai where is the iron farm?"}'
+```
+
+## Phone Coordinate Sync
+
+FastAPI can sync the Raspberry Pi dashboard coordinate DB into the Android app before queued AI requests. This is required because Android coordinate RAG searches its own Room DB.
+
+```env
+COORDINATE_SYNC_TO_PHONE=true
+COORDINATE_DB_PATH=/home/user/server/dashboard/dashboard.db
+COORDINATE_DB_TABLE=coordinates
+COORDINATE_SYNC_LIMIT=200
+COORDINATE_SYNC_TTL_SECONDS=300
+```
+
+Manual bridge check:
+
+```bash
+python scripts/check_phone_ai_bridge.py --force-coordinate-sync
+```
+
+Service-token sync endpoint:
+
+```bash
+curl -s -X POST \
+  -H "X-Event-Token: $DASHBOARD_EVENT_TOKEN" \
+  http://127.0.0.1:8000/coordinate-sync
+```

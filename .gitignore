@@ -43,6 +43,8 @@ paper.jar
 04_minecraft_server/world_the_end/
 04_minecraft_server/paper.jar
 04_minecraft_server/server.properties
+04_minecraft_server/plugins/*.jar
+!04_minecraft_server/plugins/README.txt
 
 05_raspberrypi_setup_test/logs/
 06_security_external_access/logs/
@@ -51,6 +53,7 @@ paper.jar
 06-1_phone_ai_bridge_android/local.properties
 06-1_phone_ai_bridge_android/*.hprof
 06-1_phone_ai_bridge_android/.gradle/
+06-1_phone_ai_bridge_android/app/.cxx/
 06-1_phone_ai_bridge_android/.kotlin/
 06-1_phone_ai_bridge_android/build/
 06-1_phone_ai_bridge_android/app/build/

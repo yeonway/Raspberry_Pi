@@ -26,7 +26,7 @@ Raspberry Pi 5에서 친구 전용 Minecraft Paper 서버를 안정적으로 운
 - RAG
 - 플레이어 기억
 - 요청 로그
-- 2차 작업: Gemma 4 E2B 4bit, LiteRT-LM 연결
+- 2차 작업: Gemma 4 E4B-it 4bit GGUF, llama.cpp JNI 연결
 
 ### Synology NAS
 - Minecraft 월드 백업 저장소

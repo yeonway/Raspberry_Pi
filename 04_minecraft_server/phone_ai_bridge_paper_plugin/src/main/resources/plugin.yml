@@ -1,0 +1,24 @@
+name: PhoneAiBridge
+version: ${version}
+main: com.example.phoneaibridge.paper.PhoneAiBridgePlugin
+api-version: '1.21'
+author: Codex
+description: Connects Paper chat commands to the Android Phone AI Bridge API.
+
+commands:
+  ai:
+    description: Ask the Android Phone AI Bridge a question.
+    usage: /ai <question>
+    permission: phoneaibridge.ask
+  phoneai:
+    description: Manage the Phone AI Bridge connection.
+    usage: /phoneai <status|health|reload>
+    permission: phoneaibridge.admin
+
+permissions:
+  phoneaibridge.ask:
+    description: Allows asking the phone AI bridge from Minecraft.
+    default: true
+  phoneaibridge.admin:
+    description: Allows checking and reloading the phone AI bridge config.
+    default: op
