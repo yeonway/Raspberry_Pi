@@ -1,5 +1,6 @@
 import json
 import os
+import socket
 import urllib.error
 import urllib.request
 from typing import Any, Dict
@@ -24,12 +25,21 @@ def phone_ai_configured() -> bool:
     return bool(phone_ai_base_url())
 
 
+def _timeout_message(timeout_seconds: float) -> str:
+    return (
+        f"Phone AI request timed out after {timeout_seconds:g}s. "
+        "If the GGUF model is not loaded yet, tap Load Model in the Android app "
+        "or increase PHONE_AI_TIMEOUT_SECONDS."
+    )
+
+
 def call_phone_ai(path: str, method: str = "GET", payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
     base_url = phone_ai_base_url()
     if not base_url:
         raise RuntimeError("PHONE_AI_BASE_URL is not configured")
 
     url = f"{base_url}{path}"
+    timeout_seconds = phone_ai_timeout()
     data = None
     headers = {"Accept": "application/json"}
 
@@ -44,13 +54,17 @@ def call_phone_ai(path: str, method: str = "GET", payload: Dict[str, Any] | None
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
 
     try:
-        with urllib.request.urlopen(request, timeout=phone_ai_timeout()) as response:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             body = response.read().decode("utf-8")
             return json.loads(body) if body else {}
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"Phone AI HTTP {e.code}: {body[:300]}") from e
+    except (TimeoutError, socket.timeout) as e:
+        raise RuntimeError(_timeout_message(timeout_seconds)) from e
     except urllib.error.URLError as e:
+        if isinstance(e.reason, (TimeoutError, socket.timeout)):
+            raise RuntimeError(_timeout_message(timeout_seconds)) from e
         raise RuntimeError(f"Phone AI connection failed: {e.reason}") from e
 
 

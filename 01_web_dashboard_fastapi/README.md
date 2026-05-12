@@ -107,6 +107,12 @@ Manual bridge check:
 python scripts/check_phone_ai_bridge.py --force-coordinate-sync
 ```
 
+If `/health` reports `"modelLoaded": false`, the script now stops before `/api/ask` and tells you to load the model in the Android app. For first-load testing from the Pi, use a longer timeout because the 5GB GGUF model can take longer than a normal HTTP request:
+
+```bash
+python scripts/check_phone_ai_bridge.py --force-coordinate-sync --allow-model-load-on-ask --timeout 180
+```
+
 Service-token sync endpoint:
 
 ```bash
