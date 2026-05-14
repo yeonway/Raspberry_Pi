@@ -17,9 +17,14 @@ COOKIE_NAME = "dashboard_session"
 EPHEMERAL_SESSION_SECRET = secrets.token_urlsafe(32)
 PUBLIC_AUTH_PATHS = (
     "/news",
+    "/community",
+    "/admin/community",
+    "/admin/community/login",
+    "/admin/community/logout",
     "/admin/news",
     "/admin/news/login",
     "/admin/news/logout",
+    "/static/community/",
     "/static/news/",
 )
 
@@ -206,13 +211,28 @@ def get_current_user(request: Request) -> Optional[str]:
 
 def is_dashboard_auth_public_path(path: str) -> bool:
     normalized = path or "/"
-    if normalized in {"/news", "/news/", "/admin/news", "/admin/news/"}:
+    if normalized in {
+        "/news",
+        "/news/",
+        "/community",
+        "/community/",
+        "/admin/news",
+        "/admin/news/",
+        "/admin/community",
+        "/admin/community/",
+    }:
         return True
     if normalized.startswith("/news/"):
         return True
+    if normalized.startswith("/community/"):
+        return True
     if normalized.startswith("/admin/news/"):
         return True
+    if normalized.startswith("/admin/community/"):
+        return True
     if normalized.startswith("/static/news/"):
+        return True
+    if normalized.startswith("/static/community/"):
         return True
     return any(normalized == item for item in PUBLIC_AUTH_PATHS)
 

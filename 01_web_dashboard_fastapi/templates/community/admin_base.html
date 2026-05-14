@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Community Admin{% endblock %}</title>
+  <link rel="stylesheet" href="/static/community/community.css" />
+  <script src="/static/community/community.js" defer></script>
+</head>
+<body class="community-admin-body">
+  <header class="community-admin-header">
+    <div>
+      <span class="community-admin-badge">Admin</span>
+      <h1>Community Management</h1>
+      <p>신고, 숨김 글, moderation 로그를 관리합니다.</p>
+    </div>
+    <nav class="community-admin-nav">
+      <a href="/admin/community">대시보드</a>
+      <a href="/admin/community/posts">글</a>
+      <a href="/admin/community/comments">댓글</a>
+      <a href="/admin/community/reports">신고</a>
+      <a href="/admin/community/bans">차단</a>
+      <a href="/admin/community/moderation">Moderation</a>
+      <a href="/admin/community/settings">설정</a>
+      <a href="/community">공개 보기</a>
+      <form method="post" action="/admin/community/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <button type="submit">로그아웃</button>
+      </form>
+    </nav>
+  </header>
+  <main class="community-admin-shell">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

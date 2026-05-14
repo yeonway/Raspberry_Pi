@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Community Admin</title>
+  <link rel="stylesheet" href="/static/community/community.css" />
+</head>
+<body class="community-admin-login-body">
+  <main class="community-admin-login-card">
+    <span class="community-admin-badge">Admin Only</span>
+    <h1>Community Admin</h1>
+    <p>익명 커뮤니티를 관리하려면 로그인하세요.</p>
+    {% if error %}<div class="community-alert danger">{{ error }}</div>{% endif %}
+    <form method="post" action="/admin/community/login" class="community-form compact">
+      <label>아이디 <input name="username" value="{{ username }}" required /></label>
+      <label>비밀번호 <input name="password" type="password" required /></label>
+      <button class="community-button primary" type="submit">로그인</button>
+    </form>
+    <a class="community-return-link" href="/community">커뮤니티로 돌아가기</a>
+  </main>
+</body>
+</html>

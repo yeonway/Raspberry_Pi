@@ -100,11 +100,12 @@ def set_admin_session_cookie(response: Response, username: str) -> None:
         secure=env_bool("NEWS_COOKIE_SECURE", env_bool("COOKIE_SECURE", False)),
         samesite="lax",
         max_age=get_news_session_max_age(),
-        path="/admin/news",
+        path="/admin",
     )
 
 
 def clear_admin_session_cookie(response: Response) -> None:
+    response.delete_cookie(key=COOKIE_NAME, path="/admin")
     response.delete_cookie(key=COOKIE_NAME, path="/admin/news")
 
 

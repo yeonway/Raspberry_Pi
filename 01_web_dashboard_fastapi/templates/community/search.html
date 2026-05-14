@@ -1,0 +1,20 @@
+{% extends "community/base.html" %}
+{% block title %}검색 · DCOUT Community{% endblock %}
+{% block content %}
+<main class="community-shell community-main">
+  <section class="community-page-head">
+    <div>
+      <span class="community-eyebrow">SEARCH</span>
+      <h1>커뮤니티 검색</h1>
+      <p>제목과 본문에서 공개 게시글을 검색합니다.</p>
+    </div>
+  </section>
+  <form class="community-search" method="get" action="/community/search">
+    <input name="q" value="{{ query }}" placeholder="검색어" maxlength="80" />
+    <button class="community-button primary" type="submit">검색</button>
+  </form>
+  <section class="community-panel">
+    {% include "community/post_list.html" %}
+  </section>
+</main>
+{% endblock %}

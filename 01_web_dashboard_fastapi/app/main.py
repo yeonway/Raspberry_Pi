@@ -6,6 +6,7 @@ from fastapi import Body, Depends, FastAPI, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.admin_community import router as admin_community_router
 from app.admin_news import router as admin_news_router
 from app.ai_queue import (
     run_admin_rcon_command,
@@ -15,6 +16,7 @@ from app.ai_queue import (
     submit_event,
 )
 from app.command import get_service_state, handle_command
+from app.community import router as community_router
 from app.coordinate_sync import sync_coordinates_to_phone
 from app.event import add_event, get_events
 from app.logs import read_logs, write_log
@@ -58,6 +60,8 @@ if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
+app.include_router(community_router)
+app.include_router(admin_community_router)
 app.include_router(news_router)
 app.include_router(admin_news_router)
 

@@ -1,0 +1,24 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-panel">
+  <h2>설정</h2>
+  {% if message %}<div class="community-alert success">{{ message }}</div>{% endif %}
+  <form class="community-form" method="post" action="/admin/community/settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <label>moderation enabled <input name="moderation_enabled" value="{{ settings.get('moderation_enabled', 'true') }}" /></label>
+    <label>auto hide enabled <input name="auto_hide_enabled" value="{{ settings.get('auto_hide_enabled', 'true') }}" /></label>
+    <label>report threshold <input name="report_threshold" value="{{ settings.get('report_threshold', '3') }}" inputmode="numeric" /></label>
+    <label>max post length <input name="max_post_length" value="{{ settings.get('max_post_length', '3000') }}" inputmode="numeric" /></label>
+    <label>max comment length <input name="max_comment_length" value="{{ settings.get('max_comment_length', '800') }}" inputmode="numeric" /></label>
+    <label>fail mode
+      <select name="fail_mode">
+        {% for mode in ["allow", "pending_review", "auto_hide"] %}
+          <option value="{{ mode }}" {% if settings.get('fail_mode') == mode %}selected{% endif %}>{{ mode }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>maintenance notice <textarea name="maintenance_notice" rows="3">{{ settings.get('maintenance_notice', '') }}</textarea></label>
+    <button class="community-button primary" type="submit">저장</button>
+  </form>
+</section>
+{% endblock %}

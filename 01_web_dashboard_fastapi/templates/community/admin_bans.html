@@ -1,0 +1,19 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-panel">
+  <h2>차단 관리</h2>
+  <p class="community-muted">IP/session 원문은 저장하지 않고 hash 값만 관리합니다.</p>
+  <div class="community-admin-list">
+    {% for ban in bans %}
+      <article class="community-admin-row">
+        <div>
+          <strong>{{ ban.ban_type }}</strong>
+          <span>{{ ban.reason }} · {{ ban.created_at }}{% if ban.expires_at %} · 만료 {{ ban.expires_at }}{% endif %}</span>
+        </div>
+      </article>
+    {% else %}
+      <div class="community-empty">등록된 차단 항목이 없습니다.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

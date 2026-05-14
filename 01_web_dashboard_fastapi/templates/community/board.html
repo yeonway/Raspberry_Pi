@@ -1,0 +1,25 @@
+{% extends "community/base.html" %}
+{% block title %}{{ board.name }} · DCOUT Community{% endblock %}
+{% block content %}
+<main class="community-shell community-main">
+  <section class="community-page-head">
+    <div>
+      <span class="community-eyebrow">BOARD</span>
+      <h1>{{ board.name }}</h1>
+      <p>{{ board.description }}</p>
+    </div>
+    <a class="community-button primary" href="/community/write?board={{ board.slug }}">글쓰기</a>
+  </section>
+  <form class="community-search" method="get" action="/community/boards/{{ board.slug }}">
+    <input name="q" value="{{ query }}" placeholder="게시글 검색" maxlength="80" />
+    <select name="sort" aria-label="정렬">
+      <option value="latest" {% if sort == "latest" %}selected{% endif %}>최신순</option>
+      <option value="popular" {% if sort == "popular" %}selected{% endif %}>인기순</option>
+    </select>
+    <button class="community-button primary" type="submit">검색</button>
+  </form>
+  <section class="community-panel">
+    {% include "community/post_list.html" %}
+  </section>
+</main>
+{% endblock %}

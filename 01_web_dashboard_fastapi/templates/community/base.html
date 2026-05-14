@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}DCOUT Community{% endblock %}</title>
+  <link rel="stylesheet" href="/static/community/community.css" />
+  <script src="/static/community/community.js" defer></script>
+</head>
+<body>
+  <header class="community-header">
+    <div class="community-shell community-header-inner">
+      <a class="community-brand" href="/community" aria-label="DCOUT Community 홈">
+        <span class="community-brand-mark">D</span>
+        <span>DCOUT Community</span>
+      </a>
+      <nav class="community-nav" aria-label="커뮤니티 메뉴">
+        <a href="/community">홈</a>
+        <a href="/community/write">글쓰기</a>
+        <a href="/community/rules">운영 규칙</a>
+        <a href="/community/privacy">개인정보 안내</a>
+      </nav>
+    </div>
+  </header>
+  {% block content %}{% endblock %}
+  <footer class="community-footer">
+    <div class="community-shell">
+      <strong>DCOUT Community</strong>
+      <span>실명, 학번, 전화번호 입력 없이 이용하는 익명 학교 커뮤니티</span>
+    </div>
+  </footer>
+</body>
+</html>

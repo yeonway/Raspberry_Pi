@@ -1,0 +1,55 @@
+{% extends "community/base.html" %}
+{% block title %}DCOUT Community{% endblock %}
+{% block content %}
+<main class="community-shell community-main">
+  <section class="community-hero">
+    <div>
+      <span class="community-eyebrow">Anonymous School Community</span>
+      <h1>익명으로 나누는 학교 이야기</h1>
+      <p>공지, 질문, 분실물, 건의사항을 가볍게 공유하세요. 부적절한 글은 자동 필터와 관리자 검토를 거칩니다.</p>
+      <div class="community-actions">
+        <a class="community-button primary" href="/community/write">익명 글쓰기</a>
+        <a class="community-button ghost" href="/community/rules">운영 규칙 보기</a>
+      </div>
+    </div>
+  </section>
+  {% if request.query_params.get("message") %}
+    <div class="community-alert success">{{ request.query_params.get("message") }}</div>
+  {% endif %}
+  {% if maintenance_notice %}
+    <div class="community-alert">{{ maintenance_notice }}</div>
+  {% endif %}
+  <section class="community-board-grid" aria-label="게시판 목록">
+    {% for board in boards %}
+      <a class="community-board-card" href="/community/boards/{{ board.slug }}">
+        <strong>{{ board.name }}</strong>
+        <span>{{ board.description }}</span>
+        <small>게시글 {{ board.post_count }}</small>
+      </a>
+    {% endfor %}
+  </section>
+  <div class="community-layout">
+    <section class="community-panel">
+      <div class="community-panel-head">
+        <h2>최신글</h2>
+        <a href="/community/search">전체 검색</a>
+      </div>
+      {% set posts = latest_posts %}
+      {% include "community/post_list.html" with context %}
+    </section>
+    <aside class="community-panel">
+      <h2>인기글</h2>
+      <div class="community-mini-list">
+        {% for post in popular_posts %}
+          <a href="/community/posts/{{ post.id }}">
+            <strong>{{ post.title }}</strong>
+            <span>{{ post.board_name }} · 좋아요 {{ post.like_count }} · 댓글 {{ post.comment_count }}</span>
+          </a>
+        {% else %}
+          <p class="community-muted">아직 인기글이 없습니다.</p>
+        {% endfor %}
+      </div>
+    </aside>
+  </div>
+</main>
+{% endblock %}

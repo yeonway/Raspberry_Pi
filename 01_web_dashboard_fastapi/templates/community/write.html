@@ -1,0 +1,36 @@
+{% extends "community/base.html" %}
+{% block title %}글쓰기 · DCOUT Community{% endblock %}
+{% block content %}
+<main class="community-shell community-main">
+  <section class="community-page-head">
+    <div>
+      <span class="community-eyebrow">WRITE</span>
+      <h1>익명 글쓰기</h1>
+      <p>실명, 학번, 전화번호 등 개인정보는 입력하지 마세요.</p>
+    </div>
+  </section>
+  <form class="community-form community-panel" method="post" action="/community/write">
+    {% if errors.get("form") %}<div class="community-alert danger">{{ errors.get("form") }}</div>{% endif %}
+    <label>게시판
+      <select name="board_slug" required>
+        <option value="">선택</option>
+        {% for board in boards %}
+          <option value="{{ board.slug }}" {% if selected_board == board.slug or form.get("board_slug") == board.slug %}selected{% endif %}>{{ board.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>제목
+      <input name="title" value="{{ form.get('title', '') }}" minlength="2" maxlength="80" required />
+    </label>
+    <label>내용
+      <textarea name="content" rows="12" minlength="2" maxlength="3000" required data-counter>{{ form.get('content', '') }}</textarea>
+      <small><span data-count>0</span>/3000</small>
+    </label>
+    <label>수정/삭제 비밀번호
+      <input name="password" type="password" minlength="4" maxlength="32" required autocomplete="new-password" />
+    </label>
+    <p class="community-muted">AI 안전 필터와 규칙 기반 필터에서 문제가 감지되면 관리자 검토 후 표시됩니다.</p>
+    <button class="community-button primary" type="submit">게시하기</button>
+  </form>
+</main>
+{% endblock %}

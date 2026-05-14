@@ -1,0 +1,24 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-panel">
+  <div class="community-panel-head">
+    <h2>신고 관리</h2>
+    <div><a href="/admin/community/reports?status=open">open</a> · <a href="/admin/community/reports?status=resolved">resolved</a> · <a href="/admin/community/reports?status=dismissed">dismissed</a></div>
+  </div>
+  <div class="community-admin-list">
+    {% for report in reports %}
+      <article class="community-admin-row">
+        <div>
+          <strong>{{ report.target_type }} #{{ report.target_id }} · {{ report.reason }}</strong>
+          <span>{{ report.status }} · {{ report.created_at }}</span>
+          {% if report.detail %}<p>{{ report.detail }}</p>{% endif %}
+        </div>
+        <div class="community-admin-actions">
+          <form method="post" action="/admin/community/reports/{{ report.id }}/resolve"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">처리 완료</button></form>
+          <form method="post" action="/admin/community/reports/{{ report.id }}/dismiss"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">기각</button></form>
+        </div>
+      </article>
+    {% else %}<div class="community-empty">신고가 없습니다.</div>{% endfor %}
+  </div>
+</section>
+{% endblock %}
