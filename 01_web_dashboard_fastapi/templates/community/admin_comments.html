@@ -7,7 +7,7 @@
       <article class="community-admin-row">
         <div>
           <strong>{{ comment.content[:80] }}</strong>
-          <span>글 #{{ comment.post_id }} · {{ comment.moderation_status }} · 신고 {{ comment.report_count }} · {{ comment.created_display }}</span>
+          <span>{{ comment.post_title }} · {{ comment.status_label }} · 신고 {{ comment.report_count }} · {{ comment.created_display }}</span>
         </div>
         <div class="community-admin-actions">
           <form method="post" action="/admin/community/comments/{{ comment.id }}/hide"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">숨김</button></form>

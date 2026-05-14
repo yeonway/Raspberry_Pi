@@ -8,7 +8,9 @@
       <h1>{{ board.name }}</h1>
       <p>{{ board.description }}</p>
     </div>
-    <a class="community-button primary" href="/community/write?board={{ board.slug }}">글쓰기</a>
+    {% if not board.admin_only_write %}
+      <a class="community-button primary" href="/community/write?board={{ board.slug }}">글쓰기</a>
+    {% endif %}
   </section>
   <form class="community-search" method="get" action="/community/boards/{{ board.slug }}">
     <input name="q" value="{{ query }}" placeholder="게시글 검색" maxlength="80" />

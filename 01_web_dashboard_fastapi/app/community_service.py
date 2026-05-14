@@ -37,6 +37,25 @@ REPORT_REASONS = [
     ("other", "기타"),
 ]
 
+STATUS_LABELS = {
+    "visible": "공개",
+    "pending_review": "검토 대기",
+    "auto_hidden": "자동 숨김",
+    "admin_hidden": "관리자 숨김",
+    "deleted_by_user": "작성자 삭제",
+    "deleted_by_admin": "관리자 삭제",
+    "open": "접수됨",
+    "resolved": "처리 완료",
+    "dismissed": "기각",
+    "allow": "허용",
+    "pending_review_action": "검토 대기",
+    "auto_hide": "자동 숨김",
+    "like": "좋아요",
+    "unlike": "좋아요 취소",
+}
+
+TARGET_TYPE_LABELS = {"post": "게시글", "comment": "댓글"}
+
 
 def community_db_path() -> Path:
     explicit = os.getenv("COMMUNITY_DB_PATH", "").strip() or os.getenv("NEWS_DB_PATH", "").strip()
@@ -97,6 +116,7 @@ def ensure_community_tables() -> None:
                 report_count INTEGER DEFAULT 0,
                 ip_hash TEXT,
                 user_agent_hash TEXT,
+                session_hash TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY(board_id) REFERENCES community_boards(id)
@@ -117,6 +137,7 @@ def ensure_community_tables() -> None:
                 report_count INTEGER DEFAULT 0,
                 ip_hash TEXT,
                 user_agent_hash TEXT,
+                session_hash TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY(post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
@@ -130,6 +151,19 @@ def ensure_community_tables() -> None:
                 reaction_type TEXT DEFAULT 'like',
                 session_hash TEXT,
                 ip_hash TEXT,
+                user_agent_hash TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS community_reaction_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                target_type TEXT NOT NULL,
+                target_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                session_hash TEXT,
+                ip_hash TEXT,
+                user_agent_hash TEXT,
                 created_at TEXT NOT NULL
             );
 
@@ -142,9 +176,45 @@ def ensure_community_tables() -> None:
                 status TEXT DEFAULT 'open',
                 reporter_session_hash TEXT,
                 reporter_ip_hash TEXT,
+                reporter_user_agent_hash TEXT,
                 created_at TEXT NOT NULL,
                 handled_at TEXT,
                 handler_note TEXT DEFAULT ''
+            );
+
+            CREATE TABLE IF NOT EXISTS community_post_revisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL,
+                old_title TEXT NOT NULL,
+                old_content TEXT NOT NULL,
+                new_title TEXT NOT NULL,
+                new_content TEXT NOT NULL,
+                editor_type TEXT NOT NULL,
+                ip_hash TEXT,
+                user_agent_hash TEXT,
+                session_hash TEXT,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS community_comment_revisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                comment_id INTEGER NOT NULL,
+                old_content TEXT NOT NULL,
+                new_content TEXT NOT NULL,
+                editor_type TEXT NOT NULL,
+                ip_hash TEXT,
+                user_agent_hash TEXT,
+                session_hash TEXT,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS community_activity_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject_type TEXT NOT NULL,
+                subject_value TEXT NOT NULL,
+                note TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS community_moderation_logs (
@@ -189,14 +259,32 @@ def ensure_community_tables() -> None:
                 ON community_reactions(target_type, target_id);
             CREATE INDEX IF NOT EXISTS idx_community_moderation_logs_created
                 ON community_moderation_logs(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_community_reaction_logs_target
+                ON community_reaction_logs(target_type, target_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_community_activity_notes_subject
+                ON community_activity_notes(subject_type, subject_value);
             """
         )
+        ensure_column(conn, "community_posts", "deleted_at", "TEXT")
+        ensure_column(conn, "community_posts", "is_edited", "INTEGER DEFAULT 0")
+        ensure_column(conn, "community_posts", "session_hash", "TEXT")
+        ensure_column(conn, "community_comments", "deleted_at", "TEXT")
+        ensure_column(conn, "community_comments", "is_edited", "INTEGER DEFAULT 0")
+        ensure_column(conn, "community_comments", "session_hash", "TEXT")
+        ensure_column(conn, "community_reactions", "user_agent_hash", "TEXT")
+        ensure_column(conn, "community_reactions", "is_active", "INTEGER DEFAULT 1")
+        ensure_column(conn, "community_reports", "reporter_user_agent_hash", "TEXT")
         for slug, name, description, sort_order, admin_only in DEFAULT_BOARDS:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO community_boards
+                INSERT INTO community_boards
                     (slug, name, description, sort_order, is_active, admin_only_write, created_at)
                 VALUES (?, ?, ?, ?, 1, ?, ?)
+                ON CONFLICT(slug) DO UPDATE SET
+                    name = excluded.name,
+                    description = excluded.description,
+                    sort_order = excluded.sort_order,
+                    admin_only_write = excluded.admin_only_write
                 """,
                 (slug, name, description, sort_order, admin_only, now_text()),
             )
@@ -282,6 +370,21 @@ def session_hash(session_id: str) -> str:
     return sign_hash(f"session:{session_id}")
 
 
+def is_banned(ip_hash: str, session_hash_value: str) -> bool:
+    ensure_community_tables()
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT id FROM community_bans
+            WHERE (ban_type = 'ip_hash' AND ban_value = ?)
+               OR (ban_type = 'session_hash' AND ban_value = ?)
+            LIMIT 1
+            """,
+            (ip_hash, session_hash_value),
+        ).fetchone()
+    return bool(row)
+
+
 def render_content(content: str) -> str:
     escaped = html.escape(content.strip())
     paragraphs = [p.strip() for p in escaped.split("\n\n") if p.strip()]
@@ -306,13 +409,18 @@ def decorate_post(row: sqlite3.Row) -> Dict[str, Any]:
     post["updated_display"] = format_date(post.get("updated_at", ""))
     post["content_html"] = render_content(post.get("content", ""))
     post["is_review"] = post.get("moderation_status") in {"pending_review", "auto_hidden"}
+    post["status_label"] = STATUS_LABELS.get(post.get("moderation_status", ""), post.get("moderation_status", ""))
+    post["is_deleted"] = post.get("moderation_status") in {"deleted_by_user", "deleted_by_admin"}
     return post
 
 
 def decorate_comment(row: sqlite3.Row) -> Dict[str, Any]:
     comment = dict(row)
     comment["created_display"] = format_date(comment.get("created_at", ""))
+    comment["updated_display"] = format_date(comment.get("updated_at", ""))
     comment["content_html"] = render_content(comment.get("content", ""))
+    comment["status_label"] = STATUS_LABELS.get(comment.get("moderation_status", ""), comment.get("moderation_status", ""))
+    comment["is_deleted"] = comment.get("moderation_status") in {"deleted_by_user", "deleted_by_admin"}
     return comment
 
 
@@ -333,6 +441,10 @@ def boards(active_only: bool = True) -> List[Dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+def public_write_boards() -> List[Dict[str, Any]]:
+    return [board for board in boards() if not int(board.get("admin_only_write", 0))]
+
+
 def get_board(slug: str) -> Optional[Dict[str, Any]]:
     ensure_community_tables()
     with connect() as conn:
@@ -350,7 +462,17 @@ def home_data() -> Dict[str, Any]:
             JOIN community_boards b ON b.id = p.board_id
             WHERE p.is_hidden = 0 AND p.moderation_status = 'visible'
             ORDER BY p.is_notice DESC, p.created_at DESC
-            LIMIT 12
+            LIMIT 10
+            """
+        ).fetchall()
+        notices = conn.execute(
+            """
+            SELECT p.*, b.slug AS board_slug, b.name AS board_name
+            FROM community_posts p
+            JOIN community_boards b ON b.id = p.board_id
+            WHERE p.is_hidden = 0 AND p.moderation_status = 'visible' AND p.is_notice = 1
+            ORDER BY p.created_at DESC
+            LIMIT 5
             """
         ).fetchall()
         popular = conn.execute(
@@ -365,15 +487,18 @@ def home_data() -> Dict[str, Any]:
         ).fetchall()
     return {
         "boards": boards(),
+        "notice_posts": [decorate_post(row) for row in notices],
         "latest_posts": [decorate_post(row) for row in latest],
         "popular_posts": [decorate_post(row) for row in popular],
         "maintenance_notice": setting("maintenance_notice", ""),
     }
 
 
-def list_posts(board_slug: str = "", query: str = "", sort: str = "latest") -> Dict[str, Any]:
+def list_posts(board_slug: str = "", query: str = "", sort: str = "latest", limit: int = 10, offset: int = 0) -> Dict[str, Any]:
     ensure_community_tables()
     params: List[Any] = []
+    limit = max(1, min(int(limit or 10), 30))
+    offset = max(0, int(offset or 0))
     where = ["p.is_hidden = 0", "p.moderation_status = 'visible'"]
     if board_slug:
         where.append("b.slug = ?")
@@ -393,11 +518,21 @@ def list_posts(board_slug: str = "", query: str = "", sort: str = "latest") -> D
             JOIN community_boards b ON b.id = p.board_id
             WHERE {' AND '.join(where)}
             ORDER BY p.is_notice DESC, {order}
-            LIMIT 50
+            LIMIT ? OFFSET ?
             """,
-            params,
+            params + [limit + 1, offset],
         ).fetchall()
-    return {"posts": [decorate_post(row) for row in rows], "query": clean_query, "sort": sort}
+    has_more = len(rows) > limit
+    visible_rows = rows[:limit]
+    return {
+        "posts": [decorate_post(row) for row in visible_rows],
+        "query": clean_query,
+        "sort": sort,
+        "limit": limit,
+        "offset": offset,
+        "next_offset": offset + limit,
+        "has_more": has_more,
+    }
 
 
 def get_public_post(post_id: int, increment_view: bool = False) -> Optional[Dict[str, Any]]:
@@ -526,6 +661,9 @@ def create_post(form: Dict[str, str], headers: Headers, client_host: str, sessio
         return False, next(iter(errors.values())), None
 
     ip_hash, user_agent_hash = client_identity(headers, client_host)
+    session_hash_value = session_hash(session_id)
+    if is_banned(ip_hash, session_hash_value):
+        return False, "현재 작성이 제한된 상태입니다.", None
     decision = CommunityModerationService().moderate(f"{data['title']}\n{data['content']}")
     is_hidden, moderation_status, hidden_reason = moderation_to_status(decision.action)
     if admin:
@@ -539,8 +677,8 @@ def create_post(form: Dict[str, str], headers: Headers, client_host: str, sessio
             INSERT INTO community_posts
                 (board_id, title, content, author_label, password_hash, is_notice,
                  is_hidden, hidden_reason, moderation_status, moderation_score,
-                 ip_hash, user_agent_hash, created_at, updated_at)
-            VALUES (?, ?, ?, '익명', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ip_hash, user_agent_hash, session_hash, created_at, updated_at)
+            VALUES (?, ?, ?, '익명', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 data["board"]["id"],
@@ -554,6 +692,7 @@ def create_post(form: Dict[str, str], headers: Headers, client_host: str, sessio
                 decision.final_flag,
                 ip_hash,
                 user_agent_hash,
+                session_hash_value,
                 current_time,
                 current_time,
             ),
@@ -574,6 +713,8 @@ def update_post_with_password(post_id: int, form: Dict[str, str], headers: Heade
     existing = get_post_for_password_action(post_id)
     if not existing:
         return False, "게시글을 찾을 수 없습니다."
+    if existing.get("is_deleted"):
+        return False, "삭제된 게시글은 수정할 수 없습니다."
     data, errors = validate_post_form(
         {
             "board_slug": existing["board_slug"],
@@ -585,14 +726,37 @@ def update_post_with_password(post_id: int, form: Dict[str, str], headers: Heade
     )
     if errors:
         return False, next(iter(errors.values()))
+    ip_hash, user_agent_hash = client_identity(headers, client_host)
+    session_hash_value = session_hash(session_id)
+    if is_banned(ip_hash, session_hash_value):
+        return False, "현재 댓글 작성이 제한된 상태입니다."
     decision = CommunityModerationService().moderate(f"{data['title']}\n{data['content']}")
     is_hidden, moderation_status, hidden_reason = moderation_to_status(decision.action)
     with connect() as conn:
         conn.execute(
             """
+            INSERT INTO community_post_revisions
+                (post_id, old_title, old_content, new_title, new_content, editor_type,
+                 ip_hash, user_agent_hash, session_hash, created_at)
+            VALUES (?, ?, ?, ?, ?, 'author', ?, ?, ?, ?)
+            """,
+            (
+                post_id,
+                existing["title"],
+                existing["content"],
+                data["title"],
+                data["content"],
+                ip_hash,
+                user_agent_hash,
+                session_hash_value,
+                now_text(),
+            ),
+        )
+        conn.execute(
+            """
             UPDATE community_posts
             SET title = ?, content = ?, is_hidden = ?, hidden_reason = ?,
-                moderation_status = ?, moderation_score = ?, updated_at = ?
+                moderation_status = ?, moderation_score = ?, is_edited = 1, updated_at = ?
             WHERE id = ?
             """,
             (
@@ -615,8 +779,8 @@ def update_post_with_password(post_id: int, form: Dict[str, str], headers: Heade
 def delete_post_with_password(post_id: int, password: str) -> Tuple[bool, str]:
     if not verify_post_password(post_id, password):
         return False, "비밀번호가 올바르지 않습니다."
-    set_post_hidden(post_id, True, "작성자 삭제")
-    return True, "게시글이 숨김 처리되었습니다."
+    soft_delete_post(post_id, "deleted_by_user")
+    return True, "게시글이 삭제 처리되었습니다."
 
 
 def add_comment(post_id: int, content: str, password: str, headers: Headers, client_host: str, session_id: str) -> Tuple[bool, str]:
@@ -627,11 +791,14 @@ def add_comment(post_id: int, content: str, password: str, headers: Headers, cli
         return False, "댓글 내용을 입력하세요."
     if len(content) > max_length:
         return False, f"댓글은 {max_length}자 이하로 입력하세요."
+    if len(password) < 4 or len(password) > 32:
+        return False, "댓글 비밀번호는 4~32자로 입력하세요."
     post = get_public_post(post_id)
     if not post:
         return False, "게시글을 찾을 수 없습니다."
 
     ip_hash, user_agent_hash = client_identity(headers, client_host)
+    session_hash_value = session_hash(session_id)
     decision = CommunityModerationService().moderate(content)
     is_hidden, moderation_status, hidden_reason = moderation_to_status(decision.action)
     stored_password = password_hash(password) if password else ""
@@ -642,8 +809,8 @@ def add_comment(post_id: int, content: str, password: str, headers: Headers, cli
             """
             INSERT INTO community_comments
                 (post_id, content, author_label, password_hash, is_hidden, hidden_reason,
-                 moderation_status, moderation_score, ip_hash, user_agent_hash, created_at, updated_at)
-            VALUES (?, ?, '익명', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 moderation_status, moderation_score, ip_hash, user_agent_hash, session_hash, created_at, updated_at)
+            VALUES (?, ?, '익명', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 post_id,
@@ -655,6 +822,7 @@ def add_comment(post_id: int, content: str, password: str, headers: Headers, cli
                 decision.final_flag,
                 ip_hash,
                 user_agent_hash,
+                session_hash_value,
                 current_time,
                 current_time,
             ),
@@ -669,59 +837,172 @@ def add_comment(post_id: int, content: str, password: str, headers: Headers, cli
     return True, "댓글이 관리자 검토 후 표시됩니다."
 
 
-def react(target_type: str, target_id: int, ip_hash: str, session_hash_value: str) -> Tuple[bool, str]:
+def get_comment_for_password_action(comment_id: int) -> Optional[Dict[str, Any]]:
+    ensure_community_tables()
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT c.*, p.title AS post_title
+            FROM community_comments c
+            JOIN community_posts p ON p.id = c.post_id
+            WHERE c.id = ?
+            """,
+            (comment_id,),
+        ).fetchone()
+    return decorate_comment(row) if row else None
+
+
+def verify_comment_password(comment_id: int, password: str) -> bool:
+    comment = get_comment_for_password_action(comment_id)
+    if not comment or not comment.get("password_hash"):
+        return False
+    return verify_password_hash(password, comment["password_hash"])
+
+
+def update_comment_with_password(comment_id: int, content: str, password: str, headers: Headers, client_host: str, session_id: str) -> Tuple[bool, str, Optional[int]]:
+    if not verify_comment_password(comment_id, password):
+        return False, "비밀번호가 올바르지 않습니다.", None
+    existing = get_comment_for_password_action(comment_id)
+    if not existing:
+        return False, "댓글을 찾을 수 없습니다.", None
+    if existing.get("is_deleted"):
+        return False, "삭제된 댓글은 수정할 수 없습니다.", existing.get("post_id")
+    content = content.strip()
+    max_length = int_setting("max_comment_length", 800)
+    if not content:
+        return False, "댓글 내용을 입력하세요.", existing.get("post_id")
+    if len(content) > max_length:
+        return False, f"댓글은 {max_length}자 이하로 입력하세요.", existing.get("post_id")
+    ip_hash, user_agent_hash = client_identity(headers, client_host)
+    session_hash_value = session_hash(session_id)
+    decision = CommunityModerationService().moderate(content)
+    is_hidden, moderation_status, hidden_reason = moderation_to_status(decision.action)
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO community_comment_revisions
+                (comment_id, old_content, new_content, editor_type, ip_hash, user_agent_hash, session_hash, created_at)
+            VALUES (?, ?, ?, 'author', ?, ?, ?, ?)
+            """,
+            (comment_id, existing["content"], content, ip_hash, user_agent_hash, session_hash_value, now_text()),
+        )
+        conn.execute(
+            """
+            UPDATE community_comments
+            SET content = ?, is_hidden = ?, hidden_reason = ?, moderation_status = ?,
+                moderation_score = ?, is_edited = 1, updated_at = ?
+            WHERE id = ?
+            """,
+            (content, is_hidden, hidden_reason, moderation_status, decision.final_flag, now_text(), comment_id),
+        )
+        log_moderation(conn, "comment", comment_id, content, decision)
+        refresh_comment_count(conn, int(existing["post_id"]))
+    if moderation_status == "visible":
+        return True, "댓글이 수정되었습니다.", existing.get("post_id")
+    return True, "수정한 댓글이 관리자 검토 후 표시됩니다.", existing.get("post_id")
+
+
+def delete_comment_with_password(comment_id: int, password: str) -> Tuple[bool, str, Optional[int]]:
+    if not verify_comment_password(comment_id, password):
+        return False, "비밀번호가 올바르지 않습니다.", None
+    comment = get_comment_for_password_action(comment_id)
+    if not comment:
+        return False, "댓글을 찾을 수 없습니다.", None
+    soft_delete_comment(comment_id, "deleted_by_user")
+    return True, "댓글이 삭제 처리되었습니다.", comment.get("post_id")
+
+
+def react(target_type: str, target_id: int, ip_hash: str, user_agent_hash: str, session_hash_value: str) -> Tuple[bool, str]:
     ensure_community_tables()
     if target_type not in {"post", "comment"}:
         return False, "잘못된 대상입니다."
+    if is_banned(ip_hash, session_hash_value):
+        return False, "현재 반응이 제한된 상태입니다."
     with connect() as conn:
+        table = "community_posts" if target_type == "post" else "community_comments"
+        target = conn.execute(
+            f"SELECT id FROM {table} WHERE id = ? AND is_hidden = 0 AND moderation_status = 'visible'",
+            (target_id,),
+        ).fetchone()
+        if not target:
+            return False, "대상을 찾을 수 없습니다."
         existing = conn.execute(
             """
-            SELECT id FROM community_reactions
+            SELECT id, is_active FROM community_reactions
             WHERE target_type = ? AND target_id = ? AND reaction_type = 'like'
-              AND (session_hash = ? OR ip_hash = ?)
+              AND (session_hash = ? OR (ip_hash = ? AND user_agent_hash = ?))
+            ORDER BY id DESC LIMIT 1
             """,
-            (target_type, target_id, session_hash_value, ip_hash),
+            (target_type, target_id, session_hash_value, ip_hash, user_agent_hash),
         ).fetchone()
+        current_time = now_text()
+        if existing and int(existing["is_active"] or 0) == 1:
+            conn.execute("UPDATE community_reactions SET is_active = 0 WHERE id = ?", (existing["id"],))
+            conn.execute(
+                """
+                INSERT INTO community_reaction_logs
+                    (target_type, target_id, action, session_hash, ip_hash, user_agent_hash, created_at)
+                VALUES (?, ?, 'unlike', ?, ?, ?, ?)
+                """,
+                (target_type, target_id, session_hash_value, ip_hash, user_agent_hash, current_time),
+            )
+            conn.execute(f"UPDATE {table} SET like_count = MAX(like_count - 1, 0) WHERE id = ?", (target_id,))
+            return True, "좋아요를 취소했습니다."
         if existing:
-            return False, "이미 좋아요를 눌렀습니다."
+            conn.execute(
+                "UPDATE community_reactions SET is_active = 1, created_at = ?, user_agent_hash = ? WHERE id = ?",
+                (current_time, user_agent_hash, existing["id"]),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO community_reactions
+                    (target_type, target_id, reaction_type, session_hash, ip_hash, user_agent_hash, is_active, created_at)
+                VALUES (?, ?, 'like', ?, ?, ?, 1, ?)
+                """,
+                (target_type, target_id, session_hash_value, ip_hash, user_agent_hash, current_time),
+            )
         conn.execute(
             """
-            INSERT INTO community_reactions (target_type, target_id, reaction_type, session_hash, ip_hash, created_at)
-            VALUES (?, ?, 'like', ?, ?, ?)
+            INSERT INTO community_reaction_logs
+                (target_type, target_id, action, session_hash, ip_hash, user_agent_hash, created_at)
+            VALUES (?, ?, 'like', ?, ?, ?, ?)
             """,
-            (target_type, target_id, session_hash_value, ip_hash, now_text()),
+            (target_type, target_id, session_hash_value, ip_hash, user_agent_hash, current_time),
         )
-        table = "community_posts" if target_type == "post" else "community_comments"
         conn.execute(f"UPDATE {table} SET like_count = like_count + 1 WHERE id = ?", (target_id,))
-    return True, "좋아요가 반영되었습니다."
+    return True, "좋아요를 눌렀습니다."
 
 
-def report(target_type: str, target_id: int, reason: str, detail: str, ip_hash: str, session_hash_value: str) -> Tuple[bool, str]:
+def report(target_type: str, target_id: int, reason: str, detail: str, ip_hash: str, user_agent_hash: str, session_hash_value: str) -> Tuple[bool, str]:
     ensure_community_tables()
     valid_reasons = {item[0] for item in REPORT_REASONS}
     if target_type not in {"post", "comment"}:
         return False, "잘못된 대상입니다."
     if reason not in valid_reasons:
         return False, "신고 사유를 선택하세요."
+    if is_banned(ip_hash, session_hash_value):
+        return False, "현재 신고 기능이 제한된 상태입니다."
     report_threshold = int_setting("report_threshold", REPORT_THRESHOLD_DEFAULT)
     with connect() as conn:
         existing = conn.execute(
             """
             SELECT id FROM community_reports
             WHERE target_type = ? AND target_id = ? AND status = 'open'
-              AND (reporter_session_hash = ? OR reporter_ip_hash = ?)
+              AND (reporter_session_hash = ? OR (reporter_ip_hash = ? AND reporter_user_agent_hash = ?))
             """,
-            (target_type, target_id, session_hash_value, ip_hash),
+            (target_type, target_id, session_hash_value, ip_hash, user_agent_hash),
         ).fetchone()
         if existing:
             return False, "이미 신고가 접수되었습니다."
         conn.execute(
             """
             INSERT INTO community_reports
-                (target_type, target_id, reason, detail, reporter_session_hash, reporter_ip_hash, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (target_type, target_id, reason, detail, reporter_session_hash,
+                 reporter_ip_hash, reporter_user_agent_hash, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (target_type, target_id, reason, detail.strip()[:500], session_hash_value, ip_hash, now_text()),
+            (target_type, target_id, reason, detail.strip()[:500], session_hash_value, ip_hash, user_agent_hash, now_text()),
         )
         table = "community_posts" if target_type == "post" else "community_comments"
         conn.execute(f"UPDATE {table} SET report_count = report_count + 1 WHERE id = ?", (target_id,))
@@ -748,15 +1029,21 @@ def admin_dashboard_data() -> Dict[str, Any]:
             "open_report_count": conn.execute("SELECT COUNT(*) AS c FROM community_reports WHERE status = 'open'").fetchone()["c"],
             "ai_flag_count": conn.execute("SELECT COUNT(*) AS c FROM community_moderation_logs WHERE final_flag = 1").fetchone()["c"],
         }
-        recent_reports = conn.execute(
-            "SELECT * FROM community_reports ORDER BY created_at DESC LIMIT 8"
-        ).fetchall()
         pending_posts = conn.execute(
             """
             SELECT p.*, b.name AS board_name, b.slug AS board_slug
             FROM community_posts p JOIN community_boards b ON b.id = p.board_id
             WHERE p.is_hidden = 1 OR p.moderation_status != 'visible'
             ORDER BY p.created_at DESC LIMIT 8
+            """
+        ).fetchall()
+        pending_comments = conn.execute(
+            """
+            SELECT c.*, p.title AS post_title, p.id AS post_id
+            FROM community_comments c JOIN community_posts p ON p.id = c.post_id
+            WHERE c.moderation_status IN ('pending_review', 'auto_hidden')
+               OR c.moderation_score > 0
+            ORDER BY c.created_at DESC LIMIT 8
             """
         ).fetchall()
         board_counts = conn.execute(
@@ -770,8 +1057,9 @@ def admin_dashboard_data() -> Dict[str, Any]:
         ).fetchall()
     return {
         "stats": stats,
-        "recent_reports": [dict(row) for row in recent_reports],
+        "recent_reports": admin_reports("open")[:8],
         "pending_posts": [decorate_post(row) for row in pending_posts],
+        "pending_comments": [decorate_comment(row) for row in pending_comments],
         "board_counts": [dict(row) for row in board_counts],
         "settings": admin_settings(),
     }
@@ -832,7 +1120,92 @@ def admin_reports(status: str = "open") -> List[Dict[str, Any]]:
             f"SELECT * FROM community_reports {where} ORDER BY created_at DESC LIMIT 100",
             params,
         ).fetchall()
-    return [dict(row) for row in rows]
+        reports = []
+        for row in rows:
+            report_item = dict(row)
+            report_item["status_label"] = STATUS_LABELS.get(report_item.get("status", ""), report_item.get("status", ""))
+            report_item["reason_label"] = dict(REPORT_REASONS).get(report_item.get("reason", ""), report_item.get("reason", ""))
+            report_item["target_type_label"] = TARGET_TYPE_LABELS.get(report_item.get("target_type", ""), report_item.get("target_type", ""))
+            report_item["created_display"] = format_date(report_item.get("created_at", ""))
+            if report_item["target_type"] == "post":
+                target = conn.execute(
+                    """
+                    SELECT p.id, p.title, p.content, p.moderation_status, p.is_hidden, b.name AS board_name
+                    FROM community_posts p JOIN community_boards b ON b.id = p.board_id
+                    WHERE p.id = ?
+                    """,
+                    (report_item["target_id"],),
+                ).fetchone()
+                if target:
+                    report_item.update(
+                        {
+                            "target_title": target["title"],
+                            "target_snippet": target["content"][:140],
+                            "target_status_label": STATUS_LABELS.get(target["moderation_status"], target["moderation_status"]),
+                            "target_url": f"/community/posts/{target['id']}",
+                            "board_name": target["board_name"],
+                        }
+                    )
+            else:
+                target = conn.execute(
+                    """
+                    SELECT c.id, c.content, c.moderation_status, c.is_hidden,
+                           p.id AS post_id, p.title AS post_title, b.name AS board_name
+                    FROM community_comments c
+                    JOIN community_posts p ON p.id = c.post_id
+                    JOIN community_boards b ON b.id = p.board_id
+                    WHERE c.id = ?
+                    """,
+                    (report_item["target_id"],),
+                ).fetchone()
+                if target:
+                    report_item.update(
+                        {
+                            "target_title": target["post_title"],
+                            "target_snippet": target["content"][:140],
+                            "target_status_label": STATUS_LABELS.get(target["moderation_status"], target["moderation_status"]),
+                            "target_url": f"/community/posts/{target['post_id']}#comment-{target['id']}",
+                            "board_name": target["board_name"],
+                        }
+                    )
+            reports.append(report_item)
+    return reports
+
+
+def admin_review_items() -> Dict[str, List[Dict[str, Any]]]:
+    ensure_community_tables()
+    with connect() as conn:
+        posts = conn.execute(
+            """
+            SELECT p.*, b.name AS board_name, b.slug AS board_slug
+            FROM community_posts p JOIN community_boards b ON b.id = p.board_id
+            WHERE p.moderation_status IN ('pending_review', 'auto_hidden')
+               OR p.moderation_score > 0
+               OR EXISTS (
+                    SELECT 1 FROM community_moderation_logs l
+                    WHERE l.target_type = 'post' AND l.target_id = p.id
+                      AND (l.rule_flag = 1 OR l.ai_flag = 1 OR l.final_flag = 1)
+               )
+            ORDER BY p.updated_at DESC, p.created_at DESC
+            LIMIT 100
+            """
+        ).fetchall()
+        comments = conn.execute(
+            """
+            SELECT c.*, p.title AS post_title, p.id AS post_id
+            FROM community_comments c JOIN community_posts p ON p.id = c.post_id
+            WHERE c.moderation_status IN ('pending_review', 'auto_hidden')
+               OR c.moderation_score > 0
+               OR EXISTS (
+                    SELECT 1 FROM community_moderation_logs l
+                    WHERE l.target_type = 'comment' AND l.target_id = c.id
+                      AND (l.rule_flag = 1 OR l.ai_flag = 1 OR l.final_flag = 1)
+               )
+            ORDER BY c.updated_at DESC, c.created_at DESC
+            LIMIT 100
+            """
+        ).fetchall()
+    return {"review_posts": [decorate_post(row) for row in posts], "review_comments": [decorate_comment(row) for row in comments]}
 
 
 def admin_moderation_logs() -> List[Dict[str, Any]]:
@@ -841,7 +1214,14 @@ def admin_moderation_logs() -> List[Dict[str, Any]]:
         rows = conn.execute(
             "SELECT * FROM community_moderation_logs ORDER BY created_at DESC LIMIT 100"
         ).fetchall()
-    return [dict(row) for row in rows]
+    logs = []
+    for row in rows:
+        item = dict(row)
+        item["target_type_label"] = TARGET_TYPE_LABELS.get(item.get("target_type", ""), item.get("target_type", ""))
+        item["final_action_label"] = STATUS_LABELS.get(item.get("final_action", ""), item.get("final_action", ""))
+        item["created_display"] = format_date(item.get("created_at", ""))
+        logs.append(item)
+    return logs
 
 
 def admin_bans() -> List[Dict[str, Any]]:
@@ -851,9 +1231,23 @@ def admin_bans() -> List[Dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+def refresh_comment_count(conn: sqlite3.Connection, post_id: int) -> None:
+    visible_count = conn.execute(
+        """
+        SELECT COUNT(*) AS c FROM community_comments
+        WHERE post_id = ? AND is_hidden = 0 AND moderation_status = 'visible'
+        """,
+        (post_id,),
+    ).fetchone()["c"]
+    conn.execute("UPDATE community_posts SET comment_count = ? WHERE id = ?", (visible_count, post_id))
+
+
 def set_post_hidden(post_id: int, hidden: bool, reason: str = "") -> None:
     ensure_community_tables()
     with connect() as conn:
+        current = conn.execute("SELECT moderation_status FROM community_posts WHERE id = ?", (post_id,)).fetchone()
+        if current and not hidden and current["moderation_status"] in {"deleted_by_user", "deleted_by_admin"}:
+            return
         conn.execute(
             """
             UPDATE community_posts
@@ -868,6 +1262,8 @@ def set_comment_hidden(comment_id: int, hidden: bool, reason: str = "") -> None:
     ensure_community_tables()
     with connect() as conn:
         row = conn.execute("SELECT post_id, moderation_status FROM community_comments WHERE id = ?", (comment_id,)).fetchone()
+        if row and not hidden and row["moderation_status"] in {"deleted_by_user", "deleted_by_admin"}:
+            return
         conn.execute(
             """
             UPDATE community_comments
@@ -877,33 +1273,48 @@ def set_comment_hidden(comment_id: int, hidden: bool, reason: str = "") -> None:
             (1 if hidden else 0, reason if hidden else "", "admin_hidden" if hidden else "visible", comment_id),
         )
         if row:
-            visible_count = conn.execute(
-                """
-                SELECT COUNT(*) AS c FROM community_comments
-                WHERE post_id = ? AND is_hidden = 0 AND moderation_status = 'visible'
-                """,
-                (row["post_id"],),
-            ).fetchone()["c"]
-            conn.execute("UPDATE community_posts SET comment_count = ? WHERE id = ?", (visible_count, row["post_id"]))
+            refresh_comment_count(conn, row["post_id"])
+
+
+def soft_delete_post(post_id: int, status: str = "deleted_by_admin") -> None:
+    ensure_community_tables()
+    if status not in {"deleted_by_user", "deleted_by_admin"}:
+        status = "deleted_by_admin"
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE community_posts
+            SET is_hidden = 1, moderation_status = ?, hidden_reason = ?, deleted_at = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (status, STATUS_LABELS[status], now_text(), now_text(), post_id),
+        )
+
+
+def soft_delete_comment(comment_id: int, status: str = "deleted_by_admin") -> None:
+    ensure_community_tables()
+    if status not in {"deleted_by_user", "deleted_by_admin"}:
+        status = "deleted_by_admin"
+    with connect() as conn:
+        row = conn.execute("SELECT post_id FROM community_comments WHERE id = ?", (comment_id,)).fetchone()
+        conn.execute(
+            """
+            UPDATE community_comments
+            SET is_hidden = 1, moderation_status = ?, hidden_reason = ?, deleted_at = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (status, STATUS_LABELS[status], now_text(), now_text(), comment_id),
+        )
+        if row:
+            refresh_comment_count(conn, row["post_id"])
 
 
 def delete_post(post_id: int) -> None:
-    ensure_community_tables()
-    with connect() as conn:
-        conn.execute("DELETE FROM community_posts WHERE id = ?", (post_id,))
+    soft_delete_post(post_id, "deleted_by_admin")
 
 
 def delete_comment(comment_id: int) -> None:
-    ensure_community_tables()
-    with connect() as conn:
-        row = conn.execute("SELECT post_id FROM community_comments WHERE id = ?", (comment_id,)).fetchone()
-        conn.execute("DELETE FROM community_comments WHERE id = ?", (comment_id,))
-        if row:
-            visible_count = conn.execute(
-                "SELECT COUNT(*) AS c FROM community_comments WHERE post_id = ? AND is_hidden = 0 AND moderation_status = 'visible'",
-                (row["post_id"],),
-            ).fetchone()["c"]
-            conn.execute("UPDATE community_posts SET comment_count = ? WHERE id = ?", (visible_count, row["post_id"]))
+    soft_delete_comment(comment_id, "deleted_by_admin")
 
 
 def handle_report(report_id: int, status: str, note: str = "") -> None:
@@ -914,4 +1325,200 @@ def handle_report(report_id: int, status: str, note: str = "") -> None:
         conn.execute(
             "UPDATE community_reports SET status = ?, handled_at = ?, handler_note = ? WHERE id = ?",
             (status, now_text(), note.strip()[:500], report_id),
+        )
+
+
+def act_on_report_target(report_id: int, action: str) -> None:
+    ensure_community_tables()
+    with connect() as conn:
+        row = conn.execute("SELECT target_type, target_id FROM community_reports WHERE id = ?", (report_id,)).fetchone()
+    if not row:
+        return
+    if row["target_type"] == "post":
+        if action == "hide":
+            set_post_hidden(row["target_id"], True, "신고 검토 후 숨김")
+        elif action == "restore":
+            set_post_hidden(row["target_id"], False)
+        elif action == "delete":
+            soft_delete_post(row["target_id"], "deleted_by_admin")
+    elif row["target_type"] == "comment":
+        if action == "hide":
+            set_comment_hidden(row["target_id"], True, "신고 검토 후 숨김")
+        elif action == "restore":
+            set_comment_hidden(row["target_id"], False)
+        elif action == "delete":
+            soft_delete_comment(row["target_id"], "deleted_by_admin")
+
+
+def add_ban(ban_type: str, ban_value: str, reason: str = "") -> None:
+    ensure_community_tables()
+    if ban_type not in {"ip_hash", "session_hash"} or not ban_value.strip():
+        return
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO community_bans (ban_type, ban_value, reason, created_at) VALUES (?, ?, ?, ?)",
+            (ban_type, ban_value.strip(), reason.strip()[:300], now_text()),
+        )
+
+
+def admin_activity(subject_type: str = "", subject_value: str = "") -> Dict[str, Any]:
+    ensure_community_tables()
+    subject_type = subject_type if subject_type in {"ip_hash", "session_hash"} else ""
+    subject_value = subject_value.strip()
+    data: Dict[str, Any] = {
+        "subject_type": subject_type,
+        "subject_value": subject_value,
+        "posts": [],
+        "comments": [],
+        "reports_made": [],
+        "reports_received": [],
+        "reactions": [],
+        "notes": [],
+    }
+    if not subject_type or not subject_value:
+        return data
+    post_where = "p.ip_hash = ?" if subject_type == "ip_hash" else "p.session_hash = ?"
+    comment_where = "c.ip_hash = ?" if subject_type == "ip_hash" else "c.session_hash = ?"
+    report_where = "r.reporter_ip_hash = ?" if subject_type == "ip_hash" else "r.reporter_session_hash = ?"
+    reaction_where = "rl.ip_hash = ?" if subject_type == "ip_hash" else "rl.session_hash = ?"
+    with connect() as conn:
+        data["posts"] = [
+            decorate_post(row)
+            for row in conn.execute(
+                f"""
+                SELECT p.*, b.name AS board_name, b.slug AS board_slug
+                FROM community_posts p JOIN community_boards b ON b.id = p.board_id
+                WHERE {post_where}
+                ORDER BY p.created_at DESC LIMIT 100
+                """,
+                (subject_value,),
+            ).fetchall()
+        ]
+        data["comments"] = [
+            decorate_comment(row)
+            for row in conn.execute(
+                f"""
+                SELECT c.*, p.title AS post_title, p.id AS post_id
+                FROM community_comments c JOIN community_posts p ON p.id = c.post_id
+                WHERE {comment_where}
+                ORDER BY c.created_at DESC LIMIT 100
+                """,
+                (subject_value,),
+            ).fetchall()
+        ]
+        data["reports_made"] = admin_reports_for_subject(conn, report_where, subject_value)
+        data["reports_received"] = reports_received_for_subject(conn, subject_type, subject_value)
+        data["reactions"] = [
+            dict(row)
+            for row in conn.execute(
+                f"""
+                SELECT rl.*, p.title AS post_title, c.content AS comment_content
+                FROM community_reaction_logs rl
+                LEFT JOIN community_posts p ON rl.target_type = 'post' AND p.id = rl.target_id
+                LEFT JOIN community_comments c ON rl.target_type = 'comment' AND c.id = rl.target_id
+                WHERE {reaction_where}
+                ORDER BY rl.created_at DESC LIMIT 100
+                """,
+                (subject_value,),
+            ).fetchall()
+        ]
+        for item in data["reactions"]:
+            item["action_label"] = STATUS_LABELS.get(item.get("action", ""), item.get("action", ""))
+            item["target_type_label"] = TARGET_TYPE_LABELS.get(item.get("target_type", ""), item.get("target_type", ""))
+            item["created_display"] = format_date(item.get("created_at", ""))
+        data["notes"] = [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT * FROM community_activity_notes
+                WHERE subject_type = ? AND subject_value = ?
+                ORDER BY created_at DESC
+                """,
+                (subject_type, subject_value),
+            ).fetchall()
+        ]
+    return data
+
+
+def admin_revisions() -> Dict[str, List[Dict[str, Any]]]:
+    ensure_community_tables()
+    with connect() as conn:
+        post_rows = conn.execute(
+            """
+            SELECT r.*, p.title AS current_title
+            FROM community_post_revisions r
+            LEFT JOIN community_posts p ON p.id = r.post_id
+            ORDER BY r.created_at DESC LIMIT 100
+            """
+        ).fetchall()
+        comment_rows = conn.execute(
+            """
+            SELECT r.*, c.post_id, p.title AS post_title
+            FROM community_comment_revisions r
+            LEFT JOIN community_comments c ON c.id = r.comment_id
+            LEFT JOIN community_posts p ON p.id = c.post_id
+            ORDER BY r.created_at DESC LIMIT 100
+            """
+        ).fetchall()
+    posts = [dict(row) for row in post_rows]
+    comments = [dict(row) for row in comment_rows]
+    for item in posts + comments:
+        item["created_display"] = format_date(item.get("created_at", ""))
+    return {"post_revisions": posts, "comment_revisions": comments}
+
+
+def admin_reports_for_subject(conn: sqlite3.Connection, where_clause: str, subject_value: str) -> List[Dict[str, Any]]:
+    rows = conn.execute(
+        f"SELECT * FROM community_reports r WHERE {where_clause} ORDER BY created_at DESC LIMIT 100",
+        (subject_value,),
+    ).fetchall()
+    reports = []
+    for row in rows:
+        item = dict(row)
+        item["status_label"] = STATUS_LABELS.get(item.get("status", ""), item.get("status", ""))
+        item["reason_label"] = dict(REPORT_REASONS).get(item.get("reason", ""), item.get("reason", ""))
+        item["target_type_label"] = TARGET_TYPE_LABELS.get(item.get("target_type", ""), item.get("target_type", ""))
+        item["created_display"] = format_date(item.get("created_at", ""))
+        reports.append(item)
+    return reports
+
+
+def reports_received_for_subject(conn: sqlite3.Connection, subject_type: str, subject_value: str) -> List[Dict[str, Any]]:
+    if subject_type != "ip_hash":
+        return []
+    rows = conn.execute(
+        """
+        SELECT r.*
+        FROM community_reports r
+        LEFT JOIN community_posts p ON r.target_type = 'post' AND p.id = r.target_id
+        LEFT JOIN community_comments c ON r.target_type = 'comment' AND c.id = r.target_id
+        WHERE p.ip_hash = ? OR c.ip_hash = ?
+        ORDER BY r.created_at DESC LIMIT 100
+        """,
+        (subject_value, subject_value),
+    ).fetchall()
+    reports = []
+    for row in rows:
+        item = dict(row)
+        item["status_label"] = STATUS_LABELS.get(item.get("status", ""), item.get("status", ""))
+        item["reason_label"] = dict(REPORT_REASONS).get(item.get("reason", ""), item.get("reason", ""))
+        item["target_type_label"] = TARGET_TYPE_LABELS.get(item.get("target_type", ""), item.get("target_type", ""))
+        item["created_display"] = format_date(item.get("created_at", ""))
+        reports.append(item)
+    return reports
+
+
+def add_activity_note(subject_type: str, subject_value: str, note: str) -> None:
+    ensure_community_tables()
+    if subject_type not in {"ip_hash", "session_hash"} or not subject_value.strip() or not note.strip():
+        return
+    current_time = now_text()
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO community_activity_notes
+                (subject_type, subject_value, note, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (subject_type, subject_value.strip(), note.strip()[:1000], current_time, current_time),
         )

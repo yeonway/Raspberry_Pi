@@ -5,19 +5,19 @@
   {% if message %}<div class="community-alert success">{{ message }}</div>{% endif %}
   <form class="community-form" method="post" action="/admin/community/settings">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <label>moderation enabled <input name="moderation_enabled" value="{{ settings.get('moderation_enabled', 'true') }}" /></label>
-    <label>auto hide enabled <input name="auto_hide_enabled" value="{{ settings.get('auto_hide_enabled', 'true') }}" /></label>
-    <label>report threshold <input name="report_threshold" value="{{ settings.get('report_threshold', '3') }}" inputmode="numeric" /></label>
-    <label>max post length <input name="max_post_length" value="{{ settings.get('max_post_length', '3000') }}" inputmode="numeric" /></label>
-    <label>max comment length <input name="max_comment_length" value="{{ settings.get('max_comment_length', '800') }}" inputmode="numeric" /></label>
-    <label>fail mode
+    <label>필터 사용 <input name="moderation_enabled" value="{{ settings.get('moderation_enabled', 'true') }}" /></label>
+    <label>자동 숨김 사용 <input name="auto_hide_enabled" value="{{ settings.get('auto_hide_enabled', 'true') }}" /></label>
+    <label>자동 숨김 신고 기준 <input name="report_threshold" value="{{ settings.get('report_threshold', '3') }}" inputmode="numeric" /></label>
+    <label>게시글 최대 길이 <input name="max_post_length" value="{{ settings.get('max_post_length', '3000') }}" inputmode="numeric" /></label>
+    <label>댓글 최대 길이 <input name="max_comment_length" value="{{ settings.get('max_comment_length', '800') }}" inputmode="numeric" /></label>
+    <label>모델 실패 시 처리
       <select name="fail_mode">
         {% for mode in ["allow", "pending_review", "auto_hide"] %}
-          <option value="{{ mode }}" {% if settings.get('fail_mode') == mode %}selected{% endif %}>{{ mode }}</option>
+          <option value="{{ mode }}" {% if settings.get('fail_mode') == mode %}selected{% endif %}>{% if mode == "allow" %}허용{% elif mode == "pending_review" %}검토 대기{% else %}자동 숨김{% endif %}</option>
         {% endfor %}
       </select>
     </label>
-    <label>maintenance notice <textarea name="maintenance_notice" rows="3">{{ settings.get('maintenance_notice', '') }}</textarea></label>
+    <label>운영 안내 <textarea name="maintenance_notice" rows="3">{{ settings.get('maintenance_notice', '') }}</textarea></label>
     <button class="community-button primary" type="submit">저장</button>
   </form>
 </section>

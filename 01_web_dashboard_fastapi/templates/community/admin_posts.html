@@ -1,13 +1,16 @@
 {% extends "community/admin_base.html" %}
 {% block content %}
 <section class="community-panel">
-  <div class="community-panel-head"><h2>글 관리</h2><a href="/admin/community/posts?status=hidden">숨김/검토만</a></div>
+  <div class="community-panel-head">
+    <h2>글 관리</h2>
+    <div><a href="/admin/community/notices/new">공지 작성</a> · <a href="/admin/community/posts?status=hidden">숨김/검토만</a></div>
+  </div>
   <div class="community-admin-list">
     {% for post in posts %}
       <article class="community-admin-row">
         <div>
           <strong>{{ post.title }}</strong>
-          <span>{{ post.board_name }} · {{ post.moderation_status }} · 신고 {{ post.report_count }} · {{ post.created_display }}</span>
+          <span>{{ post.board_name }} · {{ post.status_label }} · 신고 {{ post.report_count }} · {{ post.created_display }}</span>
         </div>
         <div class="community-admin-actions">
           <a href="/community/posts/{{ post.id }}">보기</a>

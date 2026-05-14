@@ -3,19 +3,34 @@
 <section class="community-panel">
   <div class="community-panel-head">
     <h2>신고 관리</h2>
-    <div><a href="/admin/community/reports?status=open">open</a> · <a href="/admin/community/reports?status=resolved">resolved</a> · <a href="/admin/community/reports?status=dismissed">dismissed</a></div>
+    <div><a href="/admin/community/reports?status=open">접수됨</a> · <a href="/admin/community/reports?status=resolved">처리 완료</a> · <a href="/admin/community/reports?status=dismissed">기각</a></div>
   </div>
   <div class="community-admin-list">
     {% for report in reports %}
-      <article class="community-admin-row">
+      <article class="community-admin-row community-admin-row-stack">
         <div>
-          <strong>{{ report.target_type }} #{{ report.target_id }} · {{ report.reason }}</strong>
-          <span>{{ report.status }} · {{ report.created_at }}</span>
-          {% if report.detail %}<p>{{ report.detail }}</p>{% endif %}
+          <strong>{{ report.target_type_label }} · {{ report.target_title or ("대상 #" ~ report.target_id) }}</strong>
+          <span>{{ report.board_name or "게시판 없음" }} · {{ report.reason_label }} · {{ report.status_label }} · {{ report.created_display }}</span>
+          {% if report.target_snippet %}<p class="community-muted">대상 내용: {{ report.target_snippet }}</p>{% endif %}
+          {% if report.detail %}<p>신고 상세: {{ report.detail }}</p>{% endif %}
+          <p class="community-hash-line">신고자 ip_hash {{ report.reporter_ip_hash or "-" }} · browser_hash {{ report.reporter_user_agent_hash or "-" }} · session_hash {{ report.reporter_session_hash or "-" }}</p>
+          <p class="community-muted">대상 상태: {{ report.target_status_label or "확인 불가" }}</p>
         </div>
         <div class="community-admin-actions">
-          <form method="post" action="/admin/community/reports/{{ report.id }}/resolve"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">처리 완료</button></form>
-          <form method="post" action="/admin/community/reports/{{ report.id }}/dismiss"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">기각</button></form>
+          {% if report.target_url %}<a href="{{ report.target_url }}">대상 보기</a>{% endif %}
+          <form method="post" action="/admin/community/reports/{{ report.id }}/hide"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">숨김 처리</button></form>
+          <form method="post" action="/admin/community/reports/{{ report.id }}/restore"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">복구</button></form>
+          <form method="post" action="/admin/community/reports/{{ report.id }}/delete" data-confirm="대상을 삭제 처리할까요?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button class="danger" type="submit">삭제</button></form>
+          <form method="post" action="/admin/community/reports/{{ report.id }}/resolve">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input name="handler_note" placeholder="처리 메모" />
+            <button type="submit">처리 완료</button>
+          </form>
+          <form method="post" action="/admin/community/reports/{{ report.id }}/dismiss">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input name="handler_note" placeholder="기각 메모" />
+            <button type="submit">기각</button>
+          </form>
         </div>
       </article>
     {% else %}<div class="community-empty">신고가 없습니다.</div>{% endfor %}

@@ -11,6 +11,16 @@
   </section>
   <form class="community-search" method="get" action="/community/search">
     <input name="q" value="{{ query }}" placeholder="검색어" maxlength="80" />
+    <select name="board" aria-label="게시판 선택">
+      <option value="">전체 게시판</option>
+      {% for item in boards %}
+        <option value="{{ item.slug }}" {% if selected_board == item.slug %}selected{% endif %}>{{ item.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="sort" aria-label="정렬">
+      <option value="latest" {% if sort == "latest" %}selected{% endif %}>최신순</option>
+      <option value="popular" {% if sort == "popular" %}selected{% endif %}>인기순</option>
+    </select>
     <button class="community-button primary" type="submit">검색</button>
   </form>
   <section class="community-panel">

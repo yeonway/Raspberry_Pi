@@ -25,6 +25,10 @@ def client_context(request: Request) -> Tuple[str, str, str]:
     return raw_session, community_service.session_hash(raw_session), ip_hash
 
 
+def identity_hashes(request: Request) -> Tuple[str, str]:
+    return community_service.client_identity(request.headers, request.client.host if request.client else "")
+
+
 def with_session_cookie(response: Response, session_id: str) -> Response:
     response.set_cookie(
         key="community_session",
@@ -35,6 +39,15 @@ def with_session_cookie(response: Response, session_id: str) -> Response:
         path="/community",
     )
     return response
+
+
+def append_message(url: str, key: str, message: str) -> str:
+    anchor = ""
+    if "#" in url:
+        url, anchor = url.split("#", 1)
+        anchor = f"#{anchor}"
+    separator = "&" if "?" in url else "?"
+    return f"{url}{separator}{urlencode({key: message})}{anchor}"
 
 
 @router.get("/news")
@@ -66,7 +79,7 @@ def community_home_head():
 
 
 @router.get("/community/boards/{board_slug}", response_class=HTMLResponse)
-def community_board(request: Request, board_slug: str, q: str = "", sort: str = "latest"):
+def community_board(request: Request, board_slug: str, q: str = "", sort: str = "latest", offset: int = 0):
     board = community_service.get_board(board_slug)
     if not board:
         raise HTTPException(status_code=404, detail="board not found")
@@ -78,7 +91,8 @@ def community_board(request: Request, board_slug: str, q: str = "", sort: str = 
             "request": request,
             "board": board,
             "boards": community_service.boards(),
-            **community_service.list_posts(board_slug=board_slug, query=q, sort=sort),
+            "list_base_url": f"/community/boards/{board_slug}?q={q}&sort={sort}",
+            **community_service.list_posts(board_slug=board_slug, query=q, sort=sort, offset=offset),
         },
     )
     return with_session_cookie(response, session_id)
@@ -131,6 +145,11 @@ async def community_update_post(request: Request, post_id: int):
         session_id,
     )
     if ok:
+        if not community_service.get_public_post(post_id):
+            return with_session_cookie(
+                RedirectResponse(url=f"/community?{urlencode({'message': message})}", status_code=303),
+                session_id,
+            )
         return with_session_cookie(
             RedirectResponse(url=f"/community/posts/{post_id}?{urlencode({'message': message})}", status_code=303),
             session_id,
@@ -168,7 +187,7 @@ def community_write(request: Request, board: str = ""):
         "community/write.html",
         {
             "request": request,
-            "boards": community_service.boards(),
+            "boards": community_service.public_write_boards(),
             "selected_board": board,
             "errors": {},
             "form": {},
@@ -208,7 +227,7 @@ async def community_create_post(request: Request):
         "community/write.html",
         {
             "request": request,
-            "boards": community_service.boards(),
+            "boards": community_service.public_write_boards(),
             "selected_board": form.get("board_slug", ""),
             "errors": {"form": message},
             "form": form,
@@ -237,10 +256,42 @@ async def community_add_comment(request: Request, post_id: int):
     )
 
 
+@router.post("/community/comments/{comment_id}/edit")
+async def community_edit_comment(request: Request, comment_id: int):
+    form = await read_form_data(request)
+    session_id, _, _ = client_context(request)
+    ok, message, post_id = community_service.update_comment_with_password(
+        comment_id,
+        form.get("content", ""),
+        form.get("password", ""),
+        request.headers,
+        request.client.host if request.client else "",
+        session_id,
+    )
+    target = f"/community/posts/{post_id}#comments" if post_id else request.headers.get("referer", "/community")
+    return with_session_cookie(
+        RedirectResponse(url=append_message(target, "message" if ok else "error", message), status_code=303),
+        session_id,
+    )
+
+
+@router.post("/community/comments/{comment_id}/delete")
+async def community_delete_comment(request: Request, comment_id: int):
+    form = await read_form_data(request)
+    session_id, _, _ = client_context(request)
+    ok, message, post_id = community_service.delete_comment_with_password(comment_id, form.get("password", ""))
+    target = f"/community/posts/{post_id}#comments" if post_id else request.headers.get("referer", "/community")
+    return with_session_cookie(
+        RedirectResponse(url=append_message(target, "message" if ok else "error", message), status_code=303),
+        session_id,
+    )
+
+
 @router.post("/community/posts/{post_id}/react")
 async def community_react_post(request: Request, post_id: int):
     session_id, session_hash, ip_hash = client_context(request)
-    ok, message = community_service.react("post", post_id, ip_hash, session_hash)
+    _, user_agent_hash = identity_hashes(request)
+    ok, message = community_service.react("post", post_id, ip_hash, user_agent_hash, session_hash)
     return with_session_cookie(
         RedirectResponse(url=f"/community/posts/{post_id}?{urlencode({'message' if ok else 'error': message})}", status_code=303),
         session_id,
@@ -250,9 +301,11 @@ async def community_react_post(request: Request, post_id: int):
 @router.post("/community/comments/{comment_id}/react")
 async def community_react_comment(request: Request, comment_id: int):
     session_id, session_hash, ip_hash = client_context(request)
-    ok, message = community_service.react("comment", comment_id, ip_hash, session_hash)
+    _, user_agent_hash = identity_hashes(request)
+    ok, message = community_service.react("comment", comment_id, ip_hash, user_agent_hash, session_hash)
+    target = request.headers.get("referer", "/community")
     return with_session_cookie(
-        RedirectResponse(url=f"/community?{urlencode({'message' if ok else 'error': message})}", status_code=303),
+        RedirectResponse(url=append_message(target, "message" if ok else "error", message), status_code=303),
         session_id,
     )
 
@@ -261,8 +314,9 @@ async def community_react_comment(request: Request, comment_id: int):
 async def community_report_post(request: Request, post_id: int):
     form = await read_form_data(request)
     session_id, session_hash, ip_hash = client_context(request)
+    _, user_agent_hash = identity_hashes(request)
     ok, message = community_service.report(
-        "post", post_id, form.get("reason", ""), form.get("detail", ""), ip_hash, session_hash
+        "post", post_id, form.get("reason", ""), form.get("detail", ""), ip_hash, user_agent_hash, session_hash
     )
     return with_session_cookie(
         RedirectResponse(url=f"/community/posts/{post_id}?{urlencode({'message' if ok else 'error': message})}", status_code=303),
@@ -274,17 +328,19 @@ async def community_report_post(request: Request, post_id: int):
 async def community_report_comment(request: Request, comment_id: int):
     form = await read_form_data(request)
     session_id, session_hash, ip_hash = client_context(request)
+    _, user_agent_hash = identity_hashes(request)
     ok, message = community_service.report(
-        "comment", comment_id, form.get("reason", ""), form.get("detail", ""), ip_hash, session_hash
+        "comment", comment_id, form.get("reason", ""), form.get("detail", ""), ip_hash, user_agent_hash, session_hash
     )
+    target = request.headers.get("referer", "/community")
     return with_session_cookie(
-        RedirectResponse(url=f"/community?{urlencode({'message' if ok else 'error': message})}", status_code=303),
+        RedirectResponse(url=append_message(target, "message" if ok else "error", message), status_code=303),
         session_id,
     )
 
 
 @router.get("/community/search", response_class=HTMLResponse)
-def community_search(request: Request, q: str = "", sort: str = "latest"):
+def community_search(request: Request, q: str = "", board: str = "", sort: str = "latest", offset: int = 0):
     session_id, _, _ = client_context(request)
     response = templates.TemplateResponse(
         request,
@@ -292,7 +348,9 @@ def community_search(request: Request, q: str = "", sort: str = "latest"):
         {
             "request": request,
             "boards": community_service.boards(),
-            **community_service.list_posts(query=q, sort=sort),
+            "selected_board": board,
+            "list_base_url": f"/community/search?q={q}&board={board}&sort={sort}",
+            **community_service.list_posts(board_slug=board, query=q, sort=sort, offset=offset),
         },
     )
     return with_session_cookie(response, session_id)

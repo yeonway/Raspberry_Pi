@@ -19,6 +19,16 @@
   {% if maintenance_notice %}
     <div class="community-alert">{{ maintenance_notice }}</div>
   {% endif %}
+  {% if notice_posts %}
+    <section class="community-panel community-notice-strip">
+      <h2>공지</h2>
+      <div class="community-mini-list">
+        {% for post in notice_posts %}
+          <a href="/community/posts/{{ post.id }}"><strong>{{ post.title }}</strong><span>{{ post.created_display }}</span></a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
   <section class="community-board-grid" aria-label="게시판 목록">
     {% for board in boards %}
       <a class="community-board-card" href="/community/boards/{{ board.slug }}">
@@ -35,6 +45,7 @@
         <a href="/community/search">전체 검색</a>
       </div>
       {% set posts = latest_posts %}
+      {% set list_base_url = "/community/search?sort=latest" %}
       {% include "community/post_list.html" with context %}
     </section>
     <aside class="community-panel">

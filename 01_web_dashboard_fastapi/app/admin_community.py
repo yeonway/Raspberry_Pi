@@ -1,5 +1,5 @@
 from typing import Dict
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -116,6 +116,38 @@ def admin_community_posts(request: Request, status: str = ""):
     )
 
 
+@router.get("/admin/community/notices/new", response_class=HTMLResponse)
+def admin_community_notice_new(request: Request):
+    admin = require_admin(request)
+    return templates.TemplateResponse(
+        request,
+        "community/admin_notice_form.html",
+        context(request, admin, boards=community_service.boards(), form={}, error="", nav="posts"),
+    )
+
+
+@router.post("/admin/community/notices/new")
+async def admin_community_notice_create(request: Request):
+    form = await read_form_data(request)
+    admin = require_admin_csrf(request, form)
+    form["board_slug"] = "notice"
+    ok, message, post_id = community_service.create_post(
+        form,
+        request.headers,
+        request.client.host if request.client else "",
+        f"admin:{admin}",
+        admin=True,
+    )
+    if ok and post_id:
+        return RedirectResponse(url=f"/admin/community/posts?{urlencode({'message': message})}", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "community/admin_notice_form.html",
+        context(request, admin, boards=community_service.boards(), form=form, error=message, nav="posts"),
+        status_code=400,
+    )
+
+
 @router.post("/admin/community/posts/{post_id}/hide")
 async def admin_community_post_hide(request: Request, post_id: int):
     form = await read_form_data(request)
@@ -130,6 +162,14 @@ async def admin_community_post_restore(request: Request, post_id: int):
     require_admin_csrf(request, form)
     community_service.set_post_hidden(post_id, False)
     return RedirectResponse(url="/admin/community/posts", status_code=303)
+
+
+@router.post("/admin/community/posts/{post_id}/approve")
+async def admin_community_post_approve(request: Request, post_id: int):
+    form = await read_form_data(request)
+    require_admin_csrf(request, form)
+    community_service.set_post_hidden(post_id, False)
+    return RedirectResponse(url=request.headers.get("referer", "/admin/community/review"), status_code=303)
 
 
 @router.post("/admin/community/posts/{post_id}/delete")
@@ -166,6 +206,14 @@ async def admin_community_comment_restore(request: Request, comment_id: int):
     return RedirectResponse(url="/admin/community/comments", status_code=303)
 
 
+@router.post("/admin/community/comments/{comment_id}/approve")
+async def admin_community_comment_approve(request: Request, comment_id: int):
+    form = await read_form_data(request)
+    require_admin_csrf(request, form)
+    community_service.set_comment_hidden(comment_id, False)
+    return RedirectResponse(url=request.headers.get("referer", "/admin/community/review"), status_code=303)
+
+
 @router.post("/admin/community/comments/{comment_id}/delete")
 async def admin_community_comment_delete(request: Request, comment_id: int):
     form = await read_form_data(request)
@@ -181,6 +229,16 @@ def admin_community_reports(request: Request, status: str = "open"):
         request,
         "community/admin_reports.html",
         context(request, admin, reports=community_service.admin_reports(status), status=status, nav="reports"),
+    )
+
+
+@router.get("/admin/community/review", response_class=HTMLResponse)
+def admin_community_review(request: Request):
+    admin = require_admin(request)
+    return templates.TemplateResponse(
+        request,
+        "community/admin_review.html",
+        context(request, admin, **community_service.admin_review_items(), nav="review"),
     )
 
 
@@ -200,6 +258,16 @@ async def admin_community_report_dismiss(request: Request, report_id: int):
     return RedirectResponse(url="/admin/community/reports", status_code=303)
 
 
+@router.post("/admin/community/reports/{report_id}/{action}")
+async def admin_community_report_target_action(request: Request, report_id: int, action: str):
+    form = await read_form_data(request)
+    require_admin_csrf(request, form)
+    if action not in {"hide", "restore", "delete"}:
+        raise HTTPException(status_code=404, detail="unknown report action")
+    community_service.act_on_report_target(report_id, action)
+    return RedirectResponse(url=request.headers.get("referer", "/admin/community/reports"), status_code=303)
+
+
 @router.get("/admin/community/moderation", response_class=HTMLResponse)
 def admin_community_moderation(request: Request):
     admin = require_admin(request)
@@ -217,6 +285,45 @@ def admin_community_bans(request: Request):
         request,
         "community/admin_bans.html",
         context(request, admin, bans=community_service.admin_bans(), nav="bans"),
+    )
+
+
+@router.post("/admin/community/bans")
+async def admin_community_ban_create(request: Request):
+    form = await read_form_data(request)
+    require_admin_csrf(request, form)
+    community_service.add_ban(form.get("ban_type", ""), form.get("ban_value", ""), form.get("reason", ""))
+    return RedirectResponse(url=request.headers.get("referer", "/admin/community/bans"), status_code=303)
+
+
+@router.get("/admin/community/activity", response_class=HTMLResponse)
+def admin_community_activity(request: Request, subject_type: str = "", subject_value: str = ""):
+    admin = require_admin(request)
+    return templates.TemplateResponse(
+        request,
+        "community/admin_activity.html",
+        context(request, admin, **community_service.admin_activity(subject_type, subject_value), nav="activity"),
+    )
+
+
+@router.get("/admin/community/revisions", response_class=HTMLResponse)
+def admin_community_revisions(request: Request):
+    admin = require_admin(request)
+    return templates.TemplateResponse(
+        request,
+        "community/admin_revisions.html",
+        context(request, admin, **community_service.admin_revisions(), nav="revisions"),
+    )
+
+
+@router.post("/admin/community/activity/notes")
+async def admin_community_activity_note(request: Request):
+    form = await read_form_data(request)
+    require_admin_csrf(request, form)
+    community_service.add_activity_note(form.get("subject_type", ""), form.get("subject_value", ""), form.get("note", ""))
+    return RedirectResponse(
+        url=f"/admin/community/activity?subject_type={form.get('subject_type', '')}&subject_value={form.get('subject_value', '')}",
+        status_code=303,
     )
 
 
