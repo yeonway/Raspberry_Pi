@@ -64,6 +64,7 @@ class RuleBasedModerationFilter:
     url_pattern = re.compile(r"https?://|www\.", re.I)
     default_blocked_terms = [
         "badword_placeholder",
+        "\u3145\u3142",
         "시발",
         "씨발",
         "ㅅㅂ",
@@ -96,8 +97,18 @@ class RuleBasedModerationFilter:
 
     def normalize(self, content: str) -> Tuple[str, str]:
         lowered = re.sub(r"\s+", " ", content.lower()).strip()
-        compact = re.sub(r"[^0-9a-z가-힣]+", "", lowered)
+        compact = re.sub(r"[^0-9a-z\u3131-\u318e\uac00-\ud7a3]+", "", lowered)
         return lowered, compact
+
+    def compact_variants(self, compact: str) -> List[str]:
+        variants = [compact]
+        no_digits = re.sub(r"\d+", "", compact)
+        if no_digits and no_digits not in variants:
+            variants.append(no_digits)
+        no_ascii = re.sub(r"[0-9a-z]+", "", compact)
+        if no_ascii and no_ascii not in variants:
+            variants.append(no_ascii)
+        return variants
 
     def check(self, content: str) -> List[str]:
         reasons: List[str] = []
@@ -125,8 +136,9 @@ class RuleBasedModerationFilter:
             symbols = sum(1 for ch in content if not ch.isalnum() and not ch.isspace())
             if symbols / max(len(content), 1) > 0.45:
                 reasons.append("excessive_symbols")
+        variants = self.compact_variants(compact)
         for term in self.blocked_terms:
-            if term and term in compact:
+            if term and any(term in variant for variant in variants):
                 reasons.append("blocked_term")
                 break
 

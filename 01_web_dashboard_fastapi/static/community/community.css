@@ -700,6 +700,27 @@ dialog.community-modal::backdrop {
   font-size: 12px;
 }
 
+.community-sensitive-preview {
+  margin: 10px 0;
+  border: 1px solid var(--community-border);
+  border-radius: 14px;
+  background: var(--community-muted-surface);
+}
+
+.community-sensitive-preview summary {
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--community-accent-hover);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.community-sensitive-preview p {
+  margin: 0;
+  padding: 0 12px 12px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .community-board-grid,
   .community-layout,

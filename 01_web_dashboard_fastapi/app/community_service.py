@@ -56,6 +56,20 @@ STATUS_LABELS = {
 
 TARGET_TYPE_LABELS = {"post": "게시글", "comment": "댓글"}
 
+MODERATION_REASON_LABELS = {
+    "blocked_term": "금칙어 의심",
+    "empty": "빈 내용",
+    "too_long_for_moderation": "검토 길이 초과",
+    "personal_info_email": "이메일 형태 개인정보 의심",
+    "personal_info_phone": "전화번호 형태 개인정보 의심",
+    "personal_info_identifier": "식별번호 형태 개인정보 의심",
+    "personal_info_long_number": "긴 숫자열 개인정보 의심",
+    "too_many_urls": "URL 과다 포함",
+    "repeated_characters": "반복 문자 과다",
+    "repeated_pattern": "반복 패턴 과다",
+    "excessive_symbols": "특수문자 과다",
+}
+
 
 def community_db_path() -> Path:
     explicit = os.getenv("COMMUNITY_DB_PATH", "").strip() or os.getenv("NEWS_DB_PATH", "").strip()
@@ -419,6 +433,8 @@ def decorate_post(row: sqlite3.Row) -> Dict[str, Any]:
     post["is_deleted"] = post.get("moderation_status") in {"deleted_by_user", "deleted_by_admin"}
     if "final_action" in post:
         post["final_action_label"] = STATUS_LABELS.get(post.get("final_action", ""), post.get("final_action", ""))
+    if "moderation_reason" in post:
+        post["moderation_reason_label"] = label_moderation_reasons(post.get("moderation_reason", ""))
     return post
 
 
@@ -431,7 +447,22 @@ def decorate_comment(row: sqlite3.Row) -> Dict[str, Any]:
     comment["is_deleted"] = comment.get("moderation_status") in {"deleted_by_user", "deleted_by_admin"}
     if "final_action" in comment:
         comment["final_action_label"] = STATUS_LABELS.get(comment.get("final_action", ""), comment.get("final_action", ""))
+    if "moderation_reason" in comment:
+        comment["moderation_reason_label"] = label_moderation_reasons(comment.get("moderation_reason", ""))
     return comment
+
+
+def label_moderation_reasons(raw: str) -> str:
+    labels = []
+    for item in str(raw or "").split(","):
+        key = item.strip()
+        if not key:
+            continue
+        if key.startswith("ai_error"):
+            labels.append("AI 호출 실패")
+        else:
+            labels.append(MODERATION_REASON_LABELS.get(key, key))
+    return ", ".join(labels)
 
 
 def boards(active_only: bool = True) -> List[Dict[str, Any]]:
@@ -1261,6 +1292,7 @@ def admin_moderation_logs() -> List[Dict[str, Any]]:
         item = dict(row)
         item["target_type_label"] = TARGET_TYPE_LABELS.get(item.get("target_type", ""), item.get("target_type", ""))
         item["final_action_label"] = STATUS_LABELS.get(item.get("final_action", ""), item.get("final_action", ""))
+        item["reason_label"] = label_moderation_reasons(item.get("reason", ""))
         item["created_display"] = format_date(item.get("created_at", ""))
         logs.append(item)
     return logs

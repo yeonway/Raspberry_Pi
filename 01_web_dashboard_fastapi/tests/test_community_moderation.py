@@ -15,6 +15,8 @@ class CommunityModerationTests(unittest.TestCase):
         rule_filter = RuleBasedModerationFilter()
         reasons = rule_filter.check("badword_placeholder")
         self.assertIn("blocked_term", reasons)
+        bypass_reasons = rule_filter.check("ㅅ1ㅂ2")
+        self.assertIn("blocked_term", bypass_reasons)
         privacy_reasons = rule_filter.check("contact test@example.com")
         self.assertIn("personal_info_email", privacy_reasons)
 
