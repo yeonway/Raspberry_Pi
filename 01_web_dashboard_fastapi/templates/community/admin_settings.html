@@ -17,6 +17,9 @@
         {% endfor %}
       </select>
     </label>
+    <label>추가 금칙어
+      <textarea name="blocked_terms" rows="3" placeholder="쉼표로 구분합니다. 공개 화면에는 표시되지 않습니다.">{{ settings.get('blocked_terms', '') }}</textarea>
+    </label>
     <label>운영 안내 <textarea name="maintenance_notice" rows="3">{{ settings.get('maintenance_notice', '') }}</textarea></label>
     <button class="community-button primary" type="submit">저장</button>
   </form>

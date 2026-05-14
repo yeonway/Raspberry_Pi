@@ -418,6 +418,11 @@ button, a, input, textarea, select { min-height: 44px; }
   box-shadow: var(--community-shadow);
 }
 
+.community-menu-popover[hidden],
+.community-report-form[hidden] {
+  display: none;
+}
+
 .community-menu-popover a,
 .community-menu-popover button {
   display: flex;
@@ -504,6 +509,22 @@ button, a, input, textarea, select { min-height: 44px; }
 
 .community-modal[hidden] { display: none; }
 
+dialog.community-modal {
+  width: min(520px, calc(100% - 32px));
+  max-width: 520px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+dialog.community-modal:not([open]) {
+  display: none;
+}
+
+dialog.community-modal::backdrop {
+  background: rgba(15, 23, 42, 0.38);
+}
+
 .community-modal-card {
   width: min(480px, 100%);
   border: 1px solid var(--community-border);
@@ -522,6 +543,39 @@ button, a, input, textarea, select { min-height: 44px; }
   color: var(--community-text);
   font-weight: 800;
   cursor: pointer;
+}
+
+.community-comment-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.community-comment .community-menu-button {
+  width: 40px;
+  min-height: 40px;
+  font-size: 20px;
+}
+
+.community-comment-like {
+  margin-top: 8px;
+}
+
+.community-comment-like .community-link-button {
+  min-height: 34px;
+  padding: 4px 9px;
+  font-size: 13px;
+}
+
+.community-comments textarea,
+.community-modal textarea {
+  min-height: 76px;
+}
+
+.community-modal .community-button {
+  min-height: 40px;
+  padding: 8px 12px;
 }
 
 .community-alert,

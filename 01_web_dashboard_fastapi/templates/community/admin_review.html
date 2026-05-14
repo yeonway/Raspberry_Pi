@@ -9,6 +9,8 @@
           <strong>{{ post.title }}</strong>
           <span>{{ post.board_name }} · {{ post.status_label }} · 신고 {{ post.report_count }} · {{ post.created_display }}</span>
           <p>{{ post.content[:180] }}</p>
+          <p class="community-muted">규칙 {{ post.rule_flag or 0 }} · AI {{ post.ai_flag or 0 }} · 최종 {{ post.final_flag or 0 }} · 처리 {{ post.final_action_label or "-" }}</p>
+          {% if post.moderation_reason %}<p class="community-muted">검토 사유: {{ post.moderation_reason }}</p>{% endif %}
           <p class="community-hash-line">ip_hash {{ post.ip_hash or "-" }} · browser_hash {{ post.user_agent_hash or "-" }} · session_hash {{ post.session_hash or "-" }}</p>
         </div>
         <div class="community-admin-actions">
@@ -29,8 +31,10 @@
       <article class="community-admin-row community-admin-row-stack">
         <div>
           <strong>{{ comment.post_title }}</strong>
-          <span>{{ comment.status_label }} · 신고 {{ comment.report_count }} · {{ comment.created_display }}</span>
+          <span>{{ comment.board_name }} · {{ comment.status_label }} · 신고 {{ comment.report_count }} · {{ comment.created_display }}</span>
           <p>{{ comment.content[:180] }}</p>
+          <p class="community-muted">규칙 {{ comment.rule_flag or 0 }} · AI {{ comment.ai_flag or 0 }} · 최종 {{ comment.final_flag or 0 }} · 처리 {{ comment.final_action_label or "-" }}</p>
+          {% if comment.moderation_reason %}<p class="community-muted">검토 사유: {{ comment.moderation_reason }}</p>{% endif %}
           <p class="community-hash-line">ip_hash {{ comment.ip_hash or "-" }} · browser_hash {{ comment.user_agent_hash or "-" }} · session_hash {{ comment.session_hash or "-" }}</p>
         </div>
         <div class="community-admin-actions">

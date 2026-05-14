@@ -15,7 +15,7 @@
           <button class="community-menu-button" type="button" aria-label="게시글 더보기" data-menu-button>⋯</button>
           <div class="community-menu-popover" hidden>
             <a href="/community/posts/{{ post.id }}/edit">수정</a>
-            <button type="button" data-toggle="#postDelete">삭제</button>
+            <button type="button" data-modal-open="#postDeleteModal">삭제</button>
             <button type="button" data-modal-open="#postReportModal">신고</button>
             <button type="button" data-copy-url="{{ request.url }}">링크 복사</button>
           </div>
@@ -29,12 +29,6 @@
     <div class="community-actions">
       <form method="post" action="/community/posts/{{ post.id }}/react"><button class="community-button secondary" type="submit">좋아요 {{ post.like_count }}</button></form>
     </div>
-    <form id="postDelete" class="community-report-form" method="post" action="/community/posts/{{ post.id }}/delete" hidden data-confirm="게시글을 삭제 처리할까요?">
-      <label>작성 비밀번호
-        <input name="password" type="password" required autocomplete="current-password" />
-      </label>
-      <button class="community-button danger" type="submit">게시글 삭제</button>
-    </form>
   </article>
 
   <section id="comments" class="community-panel community-comments">
@@ -52,30 +46,50 @@
     <div class="community-comment-list">
       {% for comment in comments %}
         <article id="comment-{{ comment.id }}" class="community-comment">
-          <div><strong>익명</strong><time>{{ comment.created_display }}</time></div>
-          <div>{{ comment.content_html|safe }}{% if comment.is_edited %}<span class="community-inline-muted">수정됨</span>{% endif %}</div>
-          <div class="community-comment-actions">
-            <form method="post" action="/community/comments/{{ comment.id }}/react"><button class="community-link-button" type="submit">좋아요 {{ comment.like_count }}</button></form>
-            <button class="community-link-button" type="button" data-toggle="#commentEdit{{ comment.id }}">수정</button>
-            <button class="community-link-button" type="button" data-toggle="#commentDelete{{ comment.id }}">삭제</button>
-            <button class="community-link-button" type="button" data-modal-open="#commentReport{{ comment.id }}">신고</button>
+          <div class="community-comment-head">
+            <div><strong>익명</strong><time>{{ comment.created_display }}</time></div>
+            <div class="community-menu">
+              <button class="community-menu-button" type="button" aria-label="댓글 더보기" data-menu-button>⋯</button>
+              <div class="community-menu-popover" hidden>
+                <button type="button" data-modal-open="#commentEdit{{ comment.id }}">수정</button>
+                <button type="button" data-modal-open="#commentDelete{{ comment.id }}">삭제</button>
+                <button type="button" data-modal-open="#commentReport{{ comment.id }}">신고</button>
+                <button type="button" data-copy-url="{{ request.url_for('community_post_detail', post_id=post.id) }}#comment-{{ comment.id }}">댓글 링크 복사</button>
+              </div>
+            </div>
           </div>
-          <form id="commentEdit{{ comment.id }}" class="community-report-form" method="post" action="/community/comments/{{ comment.id }}/edit" hidden>
-            <label>댓글 수정
-              <textarea name="content" rows="3" maxlength="800" required>{{ comment.content }}</textarea>
-            </label>
-            <label>작성 비밀번호
-              <input name="password" type="password" required autocomplete="current-password" />
-            </label>
-            <button class="community-button primary" type="submit">댓글 수정</button>
-          </form>
-          <form id="commentDelete{{ comment.id }}" class="community-report-form" method="post" action="/community/comments/{{ comment.id }}/delete" hidden data-confirm="댓글을 삭제 처리할까요?">
-            <label>작성 비밀번호
-              <input name="password" type="password" required autocomplete="current-password" />
-            </label>
-            <button class="community-button danger" type="submit">댓글 삭제</button>
-          </form>
-          <div id="commentReport{{ comment.id }}" class="community-modal" hidden>
+          <div>{{ comment.content_html|safe }}{% if comment.is_edited %}<span class="community-inline-muted">수정됨</span>{% endif %}</div>
+          <div class="community-comment-like">
+            <form method="post" action="/community/comments/{{ comment.id }}/react"><button class="community-link-button" type="submit">좋아요 {{ comment.like_count }}</button></form>
+          </div>
+          <dialog id="commentEdit{{ comment.id }}" class="community-modal">
+            <div class="community-modal-card">
+              <button class="community-modal-close" type="button" data-modal-close>닫기</button>
+              <h3>댓글 수정</h3>
+              <form class="community-form" method="post" action="/community/comments/{{ comment.id }}/edit">
+                <label>댓글 내용
+                  <textarea name="content" rows="3" maxlength="800" required>{{ comment.content }}</textarea>
+                </label>
+                <label>작성 비밀번호
+                  <input name="password" type="password" required autocomplete="current-password" />
+                </label>
+                <button class="community-button primary" type="submit">수정 저장</button>
+              </form>
+            </div>
+          </dialog>
+          <dialog id="commentDelete{{ comment.id }}" class="community-modal">
+            <div class="community-modal-card">
+              <button class="community-modal-close" type="button" data-modal-close>닫기</button>
+              <h3>댓글 삭제</h3>
+              <form class="community-form" method="post" action="/community/comments/{{ comment.id }}/delete" data-confirm="댓글을 삭제 처리할까요?">
+                <label>작성 비밀번호
+                  <input name="password" type="password" required autocomplete="current-password" />
+                </label>
+                <button class="community-button danger" type="submit">삭제 처리</button>
+              </form>
+            </div>
+          </dialog>
+          <dialog id="commentReport{{ comment.id }}" class="community-modal">
             <div class="community-modal-card" role="dialog" aria-modal="true" aria-labelledby="commentReportTitle{{ comment.id }}">
               <button class="community-modal-close" type="button" data-modal-close>닫기</button>
               <h3 id="commentReportTitle{{ comment.id }}">댓글 신고</h3>
@@ -91,7 +105,7 @@
                 <button class="community-button danger" type="submit">신고 접수</button>
               </form>
             </div>
-          </div>
+          </dialog>
         </article>
       {% else %}
         <div class="community-empty">아직 댓글이 없습니다.</div>
@@ -99,7 +113,20 @@
     </div>
   </section>
 
-  <div id="postReportModal" class="community-modal" hidden>
+  <dialog id="postDeleteModal" class="community-modal">
+    <div class="community-modal-card">
+      <button class="community-modal-close" type="button" data-modal-close>닫기</button>
+      <h3>게시글 삭제</h3>
+      <form class="community-form" method="post" action="/community/posts/{{ post.id }}/delete" data-confirm="게시글을 삭제 처리할까요?">
+        <label>작성 비밀번호
+          <input name="password" type="password" required autocomplete="current-password" />
+        </label>
+        <button class="community-button danger" type="submit">삭제 처리</button>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="postReportModal" class="community-modal">
     <div class="community-modal-card" role="dialog" aria-modal="true" aria-labelledby="postReportTitle">
       <button class="community-modal-close" type="button" data-modal-close>닫기</button>
       <h3 id="postReportTitle">게시글 신고</h3>
@@ -115,6 +142,6 @@
         <button class="community-button danger" type="submit">신고 접수</button>
       </form>
     </div>
-  </div>
+  </dialog>
 </main>
 {% endblock %}

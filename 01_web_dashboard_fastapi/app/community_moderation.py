@@ -62,6 +62,37 @@ class RuleBasedModerationFilter:
     resident_pattern = re.compile(r"\d{6}[-\s]?[1-4]\d{6}")
     long_digit_pattern = re.compile(r"\d{8,}")
     url_pattern = re.compile(r"https?://|www\.", re.I)
+    default_blocked_terms = [
+        "badword_placeholder",
+        "시발",
+        "씨발",
+        "ㅅㅂ",
+        "병신",
+        "ㅂㅅ",
+        "꺼져",
+    ]
+
+    def __init__(self, extra_terms: str = "") -> None:
+        self.blocked_terms = self.load_blocked_terms(extra_terms)
+
+    def load_blocked_terms(self, extra_terms: str = "") -> List[str]:
+        raw_terms = []
+        raw_terms.extend(self.default_blocked_terms)
+        raw_terms.extend(os.getenv("COMMUNITY_BLOCKED_TERMS", "").split(","))
+        raw_terms.extend(extra_terms.split(","))
+        file_path = os.getenv("COMMUNITY_BLOCKED_TERMS_FILE", "").strip()
+        if file_path:
+            try:
+                with open(file_path, "r", encoding="utf-8") as handle:
+                    raw_terms.extend(handle.read().splitlines())
+            except OSError:
+                pass
+        terms = []
+        for term in raw_terms:
+            normalized = self.normalize(term)[1]
+            if normalized and normalized not in terms:
+                terms.append(normalized)
+        return terms
 
     def normalize(self, content: str) -> Tuple[str, str]:
         lowered = re.sub(r"\s+", " ", content.lower()).strip()
@@ -94,8 +125,10 @@ class RuleBasedModerationFilter:
             symbols = sum(1 for ch in content if not ch.isalnum() and not ch.isspace())
             if symbols / max(len(content), 1) > 0.45:
                 reasons.append("excessive_symbols")
-        if "badword_placeholder" in lowered:
-            reasons.append("blocked_word_placeholder")
+        for term in self.blocked_terms:
+            if term and term in compact:
+                reasons.append("blocked_term")
+                break
 
         return reasons
 
@@ -143,8 +176,8 @@ class QwenModerationClient:
 
 
 class CommunityModerationService:
-    def __init__(self) -> None:
-        self.rule_filter = RuleBasedModerationFilter()
+    def __init__(self, blocked_terms: str = "") -> None:
+        self.rule_filter = RuleBasedModerationFilter(blocked_terms)
         self.ai_client = QwenModerationClient()
 
     def moderate(self, content: str) -> ModerationDecision:

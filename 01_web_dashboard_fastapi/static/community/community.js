@@ -28,29 +28,65 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  document.querySelectorAll(".community-menu-popover").forEach((popover) => {
+    popover.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+  });
+
   document.addEventListener("click", () => {
     document.querySelectorAll(".community-menu-popover").forEach((item) => {
       item.hidden = true;
     });
   });
 
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      document.querySelectorAll(".community-menu-popover").forEach((item) => {
+        item.hidden = true;
+      });
+      document.querySelectorAll("dialog.community-modal[open]").forEach((dialog) => {
+        dialog.close();
+      });
+      document.querySelectorAll(".community-modal:not(dialog)").forEach((modal) => {
+        modal.hidden = true;
+      });
+    }
+  });
+
   document.querySelectorAll("[data-modal-open]").forEach((button) => {
     button.addEventListener("click", () => {
       const modal = document.querySelector(button.getAttribute("data-modal-open"));
-      if (modal) modal.hidden = false;
+      document.querySelectorAll(".community-menu-popover").forEach((item) => {
+        item.hidden = true;
+      });
+      if (modal && typeof modal.showModal === "function") {
+        modal.showModal();
+      } else if (modal) {
+        modal.hidden = false;
+      }
     });
   });
 
   document.querySelectorAll("[data-modal-close]").forEach((button) => {
     button.addEventListener("click", () => {
       const modal = button.closest(".community-modal");
-      if (modal) modal.hidden = true;
+      if (modal && typeof modal.close === "function") {
+        modal.close();
+      } else if (modal) {
+        modal.hidden = true;
+      }
     });
   });
 
   document.querySelectorAll(".community-modal").forEach((modal) => {
     modal.addEventListener("click", (event) => {
-      if (event.target === modal) modal.hidden = true;
+      if (event.target !== modal) return;
+      if (typeof modal.close === "function") {
+        modal.close();
+      } else {
+        modal.hidden = true;
+      }
     });
   });
 

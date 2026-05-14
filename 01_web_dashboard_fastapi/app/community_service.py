@@ -300,6 +300,7 @@ def seed_settings(conn: sqlite3.Connection) -> None:
         "max_comment_length": os.getenv("COMMUNITY_MAX_COMMENT_LENGTH", "800"),
         "fail_mode": os.getenv("COMMUNITY_MODERATION_FAIL_MODE", "pending_review"),
         "maintenance_notice": "",
+        "blocked_terms": os.getenv("COMMUNITY_BLOCKED_TERMS", ""),
     }
     current_time = now_text()
     for key, value in defaults.items():
@@ -314,6 +315,10 @@ def setting(key: str, default: str = "") -> str:
     with connect() as conn:
         row = conn.execute("SELECT value FROM community_settings WHERE key = ?", (key,)).fetchone()
     return str(row["value"]) if row else default
+
+
+def moderation_service() -> CommunityModerationService:
+    return CommunityModerationService(blocked_terms=setting("blocked_terms", ""))
 
 
 def bool_setting(key: str, default: bool = False) -> bool:
@@ -338,6 +343,7 @@ def update_settings(values: Dict[str, str]) -> None:
         "max_comment_length",
         "fail_mode",
         "maintenance_notice",
+        "blocked_terms",
     }
     with connect() as conn:
         for key in allowed:
@@ -411,6 +417,8 @@ def decorate_post(row: sqlite3.Row) -> Dict[str, Any]:
     post["is_review"] = post.get("moderation_status") in {"pending_review", "auto_hidden"}
     post["status_label"] = STATUS_LABELS.get(post.get("moderation_status", ""), post.get("moderation_status", ""))
     post["is_deleted"] = post.get("moderation_status") in {"deleted_by_user", "deleted_by_admin"}
+    if "final_action" in post:
+        post["final_action_label"] = STATUS_LABELS.get(post.get("final_action", ""), post.get("final_action", ""))
     return post
 
 
@@ -421,6 +429,8 @@ def decorate_comment(row: sqlite3.Row) -> Dict[str, Any]:
     comment["content_html"] = render_content(comment.get("content", ""))
     comment["status_label"] = STATUS_LABELS.get(comment.get("moderation_status", ""), comment.get("moderation_status", ""))
     comment["is_deleted"] = comment.get("moderation_status") in {"deleted_by_user", "deleted_by_admin"}
+    if "final_action" in comment:
+        comment["final_action_label"] = STATUS_LABELS.get(comment.get("final_action", ""), comment.get("final_action", ""))
     return comment
 
 
@@ -664,7 +674,7 @@ def create_post(form: Dict[str, str], headers: Headers, client_host: str, sessio
     session_hash_value = session_hash(session_id)
     if is_banned(ip_hash, session_hash_value):
         return False, "현재 작성이 제한된 상태입니다.", None
-    decision = CommunityModerationService().moderate(f"{data['title']}\n{data['content']}")
+    decision = moderation_service().moderate(f"{data['title']}\n{data['content']}")
     is_hidden, moderation_status, hidden_reason = moderation_to_status(decision.action)
     if admin:
         is_hidden, moderation_status, hidden_reason = 0, "visible", ""
@@ -730,7 +740,7 @@ def update_post_with_password(post_id: int, form: Dict[str, str], headers: Heade
     session_hash_value = session_hash(session_id)
     if is_banned(ip_hash, session_hash_value):
         return False, "현재 댓글 작성이 제한된 상태입니다."
-    decision = CommunityModerationService().moderate(f"{data['title']}\n{data['content']}")
+    decision = moderation_service().moderate(f"{data['title']}\n{data['content']}")
     is_hidden, moderation_status, hidden_reason = moderation_to_status(decision.action)
     with connect() as conn:
         conn.execute(
@@ -799,7 +809,7 @@ def add_comment(post_id: int, content: str, password: str, headers: Headers, cli
 
     ip_hash, user_agent_hash = client_identity(headers, client_host)
     session_hash_value = session_hash(session_id)
-    decision = CommunityModerationService().moderate(content)
+    decision = moderation_service().moderate(content)
     is_hidden, moderation_status, hidden_reason = moderation_to_status(decision.action)
     stored_password = password_hash(password) if password else ""
     current_time = now_text()
@@ -875,7 +885,7 @@ def update_comment_with_password(comment_id: int, content: str, password: str, h
         return False, f"댓글은 {max_length}자 이하로 입력하세요.", existing.get("post_id")
     ip_hash, user_agent_hash = client_identity(headers, client_host)
     session_hash_value = session_hash(session_id)
-    decision = CommunityModerationService().moderate(content)
+    decision = moderation_service().moderate(content)
     is_hidden, moderation_status, hidden_reason = moderation_to_status(decision.action)
     with connect() as conn:
         conn.execute(
@@ -1177,9 +1187,24 @@ def admin_review_items() -> Dict[str, List[Dict[str, Any]]]:
     with connect() as conn:
         posts = conn.execute(
             """
-            SELECT p.*, b.name AS board_name, b.slug AS board_slug
+            SELECT p.*, b.name AS board_name, b.slug AS board_slug,
+                   (SELECT l.rule_flag FROM community_moderation_logs l
+                    WHERE l.target_type = 'post' AND l.target_id = p.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS rule_flag,
+                   (SELECT l.ai_flag FROM community_moderation_logs l
+                    WHERE l.target_type = 'post' AND l.target_id = p.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS ai_flag,
+                   (SELECT l.final_flag FROM community_moderation_logs l
+                    WHERE l.target_type = 'post' AND l.target_id = p.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS final_flag,
+                   (SELECT l.final_action FROM community_moderation_logs l
+                    WHERE l.target_type = 'post' AND l.target_id = p.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS final_action,
+                   (SELECT l.reason FROM community_moderation_logs l
+                    WHERE l.target_type = 'post' AND l.target_id = p.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS moderation_reason
             FROM community_posts p JOIN community_boards b ON b.id = p.board_id
-            WHERE p.moderation_status IN ('pending_review', 'auto_hidden')
+            WHERE p.moderation_status IN ('pending_review', 'auto_hidden', 'admin_hidden')
                OR p.moderation_score > 0
                OR EXISTS (
                     SELECT 1 FROM community_moderation_logs l
@@ -1192,9 +1217,26 @@ def admin_review_items() -> Dict[str, List[Dict[str, Any]]]:
         ).fetchall()
         comments = conn.execute(
             """
-            SELECT c.*, p.title AS post_title, p.id AS post_id
-            FROM community_comments c JOIN community_posts p ON p.id = c.post_id
-            WHERE c.moderation_status IN ('pending_review', 'auto_hidden')
+            SELECT c.*, p.title AS post_title, p.id AS post_id, b.name AS board_name,
+                   (SELECT l.rule_flag FROM community_moderation_logs l
+                    WHERE l.target_type = 'comment' AND l.target_id = c.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS rule_flag,
+                   (SELECT l.ai_flag FROM community_moderation_logs l
+                    WHERE l.target_type = 'comment' AND l.target_id = c.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS ai_flag,
+                   (SELECT l.final_flag FROM community_moderation_logs l
+                    WHERE l.target_type = 'comment' AND l.target_id = c.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS final_flag,
+                   (SELECT l.final_action FROM community_moderation_logs l
+                    WHERE l.target_type = 'comment' AND l.target_id = c.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS final_action,
+                   (SELECT l.reason FROM community_moderation_logs l
+                    WHERE l.target_type = 'comment' AND l.target_id = c.id
+                    ORDER BY l.created_at DESC LIMIT 1) AS moderation_reason
+            FROM community_comments c
+            JOIN community_posts p ON p.id = c.post_id
+            JOIN community_boards b ON b.id = p.board_id
+            WHERE c.moderation_status IN ('pending_review', 'auto_hidden', 'admin_hidden')
                OR c.moderation_score > 0
                OR EXISTS (
                     SELECT 1 FROM community_moderation_logs l
