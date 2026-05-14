@@ -23,6 +23,7 @@ from app.phone_ai import ask_phone_ai
 from app.security import (
     clear_session_cookie,
     get_current_user,
+    is_dashboard_auth_public_path,
     require_auth,
     set_session_cookie,
     verify_login,
@@ -59,6 +60,14 @@ if STATIC_DIR.exists():
 
 app.include_router(news_router)
 app.include_router(admin_news_router)
+
+
+@app.middleware("http")
+async def mark_public_news_paths(request: Request, call_next):
+    if is_dashboard_auth_public_path(request.url.path):
+        request.scope["dashboard_auth_public"] = True
+        request.state.dashboard_auth_public = True
+    return await call_next(request)
 
 
 @app.get("/")
