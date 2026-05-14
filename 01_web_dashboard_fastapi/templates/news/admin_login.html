@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>News Admin</title>
+  <link rel="stylesheet" href="/static/news/news.css" />
+</head>
+<body class="admin-login-page">
+  <main class="admin-login-wrap">
+    <form class="admin-login-card" method="post" action="/admin/news/login">
+      <span class="admin-badge">Admin Only</span>
+      <h1>News Admin</h1>
+      <p>뉴스 글을 관리하려면 로그인하세요.</p>
+
+      {% if error %}
+        <div class="form-alert error" role="alert">{{ error }}</div>
+      {% endif %}
+
+      <div class="form-field">
+        <label for="username">아이디</label>
+        <input id="username" name="username" value="{{ username }}" autocomplete="username" required />
+      </div>
+      <div class="form-field">
+        <label for="password">비밀번호</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+      </div>
+      <button class="primary-button full-width" type="submit">로그인</button>
+      <a class="return-link" href="/news">뉴스 페이지로 돌아가기</a>
+    </form>
+  </main>
+</body>
+</html>
