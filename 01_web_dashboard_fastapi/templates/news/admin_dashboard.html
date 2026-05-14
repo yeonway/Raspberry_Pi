@@ -7,54 +7,39 @@
   <link rel="stylesheet" href="/static/news/news.css" />
   <script src="/static/news/news.js" defer></script>
 </head>
-<body class="admin-page">
-  <header class="admin-header">
+<body class="news-admin-body">
+  <header class="news-admin-header">
     <div>
-      <span class="admin-badge">News Admin</span>
+      <span class="news-admin-badge">News Admin</span>
       <h1>News Management</h1>
       <p>뉴스 글과 댓글을 관리합니다.</p>
     </div>
-    <div class="admin-actions">
-      <a class="admin-button primary" href="/admin/news/new">새 글 작성</a>
-      <a class="admin-button secondary" href="/news">공개 뉴스 보기</a>
+    <div class="news-admin-actions">
+      <a class="news-admin-button primary" href="/admin/news/new">새 글 작성</a>
+      <a class="news-admin-button secondary" href="/news">공개 뉴스 보기</a>
       <form method="post" action="/admin/news/logout">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-        <button class="admin-button ghost" type="submit">로그아웃</button>
+        <button class="news-admin-button ghost" type="submit">로그아웃</button>
       </form>
     </div>
   </header>
 
-  <main class="admin-container">
-    <section class="stats-grid" aria-label="뉴스 통계">
-      <article class="stat-card">
-        <span>{{ stats.total_posts }}</span>
-        <p>전체 글</p>
-      </article>
-      <article class="stat-card">
-        <span>{{ stats.public_posts }}</span>
-        <p>공개 글</p>
-      </article>
-      <article class="stat-card">
-        <span>{{ stats.private_posts }}</span>
-        <p>비공개 글</p>
-      </article>
-      <article class="stat-card">
-        <span>{{ stats.comment_count }}</span>
-        <p>댓글 수</p>
-      </article>
-      <article class="stat-card">
-        <span>{{ stats.recent_comment_count }}</span>
-        <p>최근 7일 댓글</p>
-      </article>
+  <main class="news-admin-container">
+    <section class="news-stats-grid" aria-label="뉴스 통계">
+      <article class="news-stat-card"><span>{{ stats.total_posts }}</span><p>전체 글</p></article>
+      <article class="news-stat-card"><span>{{ stats.public_posts }}</span><p>공개 글</p></article>
+      <article class="news-stat-card"><span>{{ stats.private_posts }}</span><p>비공개 글</p></article>
+      <article class="news-stat-card"><span>{{ stats.comment_count }}</span><p>댓글 수</p></article>
+      <article class="news-stat-card"><span>{{ stats.recent_comment_count }}</span><p>최근 7일 댓글</p></article>
     </section>
 
-    <section class="admin-panel" aria-labelledby="postListTitle">
-      <div class="panel-head">
+    <section class="news-admin-panel" aria-labelledby="postListTitle">
+      <div class="news-panel-head">
         <h2 id="postListTitle">뉴스 글 목록</h2>
       </div>
       {% if posts %}
-        <div class="table-wrap">
-          <table class="admin-table">
+        <div class="news-table-wrap">
+          <table class="news-admin-table">
             <thead>
               <tr>
                 <th>제목</th>
@@ -76,40 +61,40 @@
                   </td>
                   <td data-label="상태">
                     {% if post.is_public %}
-                      <span class="status-badge public">공개</span>
+                      <span class="news-status-badge public">공개</span>
                     {% else %}
-                      <span class="status-badge private">비공개</span>
+                      <span class="news-status-badge private">비공개</span>
                     {% endif %}
                   </td>
-                  <td data-label="카테고리">{{ post.category }}</td>
+                  <td data-label="카테고리">{{ post.category_label }}</td>
                   <td data-label="고정">
                     {% if post.is_pinned %}
-                      <span class="status-badge pinned">고정</span>
+                      <span class="news-status-badge pinned">고정</span>
                     {% else %}
-                      <span class="muted-text">해제</span>
+                      <span class="news-muted">해제</span>
                     {% endif %}
                   </td>
                   <td data-label="작성일">{{ post.created_display }}</td>
                   <td data-label="댓글">{{ post.comment_count }}</td>
                   <td data-label="조회">{{ post.view_count }}</td>
                   <td data-label="액션">
-                    <div class="table-actions">
-                      <a class="small-button" href="/admin/news/{{ post.id }}/edit">수정</a>
+                    <div class="news-table-actions">
+                      <a class="news-small-button" href="/admin/news/{{ post.id }}/edit">수정</a>
                       <form method="post" action="/admin/news/{{ post.id }}/toggle-public">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                        <button class="small-button secondary" type="submit">
+                        <button class="news-small-button secondary" type="submit">
                           {% if post.is_public %}비공개{% else %}공개{% endif %}
                         </button>
                       </form>
                       <form method="post" action="/admin/news/{{ post.id }}/toggle-pin">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                        <button class="small-button warning" type="submit">
+                        <button class="news-small-button warning" type="submit">
                           {% if post.is_pinned %}고정 해제{% else %}고정{% endif %}
                         </button>
                       </form>
                       <form method="post" action="/admin/news/{{ post.id }}/delete" data-confirm="이 뉴스 글과 연결된 댓글을 삭제할까요?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                        <button class="small-button danger" type="submit">삭제</button>
+                        <button class="news-small-button danger" type="submit">삭제</button>
                       </form>
                     </div>
                   </td>
@@ -119,52 +104,52 @@
           </table>
         </div>
       {% else %}
-        <div class="admin-empty">아직 작성된 뉴스 글이 없습니다.</div>
+        <div class="news-empty">아직 작성된 뉴스 글이 없습니다.</div>
       {% endif %}
     </section>
 
-    <section id="comments" class="admin-panel" aria-labelledby="commentListTitle">
-      <div class="panel-head">
+    <section id="comments" class="news-admin-panel" aria-labelledby="commentListTitle">
+      <div class="news-panel-head">
         <h2 id="commentListTitle">댓글 관리</h2>
       </div>
       {% if comments %}
-        <div class="comment-admin-list">
+        <div class="news-comment-admin-list">
           {% for comment in comments %}
-            <article class="comment-admin-card">
+            <article class="news-comment-admin-card">
               <div>
-                <div class="comment-admin-meta">
+                <div class="news-comment-admin-meta">
                   <strong>{{ comment.post_title }}</strong>
                   <span>{{ comment.created_display }}</span>
                   {% if comment.is_hidden %}
-                    <span class="status-badge hidden">숨김</span>
+                    <span class="news-status-badge hidden">숨김</span>
                   {% else %}
-                    <span class="status-badge public">표시</span>
+                    <span class="news-status-badge public">표시</span>
                   {% endif %}
                 </div>
                 <p><b>{{ comment.author_name }}</b> · {{ comment.content_excerpt }}</p>
               </div>
-              <div class="table-actions">
+              <div class="news-table-actions">
                 {% if comment.is_hidden %}
                   <form method="post" action="/admin/news/comments/{{ comment.id }}/unhide">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <button class="small-button secondary" type="submit">숨김 해제</button>
+                    <button class="news-small-button secondary" type="submit">숨김 해제</button>
                   </form>
                 {% else %}
                   <form method="post" action="/admin/news/comments/{{ comment.id }}/hide">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <button class="small-button warning" type="submit">숨김</button>
+                    <button class="news-small-button warning" type="submit">숨김</button>
                   </form>
                 {% endif %}
                 <form method="post" action="/admin/news/comments/{{ comment.id }}/delete" data-confirm="이 댓글을 삭제할까요?">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="small-button danger" type="submit">삭제</button>
+                  <button class="news-small-button danger" type="submit">삭제</button>
                 </form>
               </div>
             </article>
           {% endfor %}
         </div>
       {% else %}
-        <div class="admin-empty">아직 등록된 댓글이 없습니다.</div>
+        <div class="news-empty">아직 등록된 댓글이 없습니다.</div>
       {% endif %}
     </section>
   </main>

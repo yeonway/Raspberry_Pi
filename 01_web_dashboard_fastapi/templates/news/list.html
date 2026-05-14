@@ -1,120 +1,109 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DCOUT News</title>
-  <link rel="stylesheet" href="/static/news/news.css" />
-</head>
-<body class="news-page">
-  <header class="news-topbar">
-    <a class="news-logo" href="/news" aria-label="DCOUT News 홈">DCOUT News</a>
-  </header>
+{% extends "news/base.html" %}
 
-  <main class="news-container">
-    <section class="news-hero" aria-labelledby="newsHeroTitle">
-      <div>
-        <p class="news-kicker">Latest Updates · {{ today_label }}</p>
-        <h1 id="newsHeroTitle">DCOUT News</h1>
-        <p class="news-hero-text">서버 소식, 업데이트, 공지사항을 확인하세요.</p>
-      </div>
-      <div class="news-hero-stat">
-        <span>{{ total }}</span>
-        <small>공개된 소식</small>
-      </div>
-    </section>
+{% block title %}DCOUT News{% endblock %}
 
-    <section class="news-controls" aria-label="뉴스 검색과 카테고리 필터">
-      <nav class="category-pills" aria-label="카테고리">
-        <a class="pill {% if not selected_category %}active{% endif %}" href="/news{% if query %}?q={{ query|urlencode }}{% endif %}">전체</a>
-        {% for item in categories %}
-          <a class="pill {% if selected_category == item.category %}active{% endif %}"
-             href="/news?category={{ item.category|urlencode }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">
-            {{ item.category }} <span>{{ item.count }}</span>
-          </a>
-        {% endfor %}
-      </nav>
-
-      <form class="news-search" method="get" action="/news">
-        {% if selected_category %}
-          <input type="hidden" name="category" value="{{ selected_category }}" />
-        {% endif %}
-        <label class="sr-only" for="newsSearch">뉴스 검색</label>
-        <input id="newsSearch" name="q" type="search" value="{{ query }}" placeholder="검색어를 입력하세요" maxlength="80" />
-        <button type="submit">검색</button>
-      </form>
-    </section>
-
+{% block content %}
+<main class="news-shell news-home">
+  <section class="news-home-hero" aria-labelledby="heroTitle">
     {% if featured_post %}
-      <section class="featured-section" aria-label="주요 뉴스">
-        <a class="featured-card" href="/news/{{ featured_post.slug }}">
-          <div class="featured-content">
-            <div class="meta-row">
-              <span class="badge">{{ featured_post.category }}</span>
-              {% if featured_post.is_pinned %}
-                <span class="pin-badge">PIN</span>
-              {% endif %}
-            </div>
-            <h2>{{ featured_post.title }}</h2>
-            <p>{{ featured_post.summary }}</p>
-            <div class="news-meta">
-              <span>{{ featured_post.created_display }}</span>
-              <span>댓글 {{ featured_post.comment_count }}</span>
-              <span>조회 {{ featured_post.view_count }}</span>
-            </div>
+      <div class="news-hero-copy">
+        <div class="news-meta-line">
+          <span class="news-eyebrow">주요 기사</span>
+          <span class="news-badge">{{ featured_post.category_label }}</span>
+          {% if featured_post.is_pinned %}
+            <span class="news-pin">상단 고정</span>
+          {% endif %}
+        </div>
+        <h1 id="heroTitle">{{ featured_post.title }}</h1>
+        <p>{{ featured_post.summary }}</p>
+        <div class="news-hero-meta">
+          <span>{{ featured_post.article_date_display }}</span>
+          <span>조회 {{ featured_post.view_count }}</span>
+          <span>댓글 {{ featured_post.comment_count }}</span>
+        </div>
+        <a class="news-primary-link" href="/news/{{ featured_post.slug }}">자세히 보기</a>
+      </div>
+      <a class="news-hero-media" href="/news/{{ featured_post.slug }}" aria-label="{{ featured_post.title }}">
+        {% if featured_post.cover_image_url %}
+          <img src="{{ featured_post.cover_image_url }}" alt="" />
+        {% else %}
+          <div class="news-hero-placeholder">
+            <span>DCOUT News</span>
+            <strong>{{ featured_post.category_label }}</strong>
           </div>
-          <span class="detail-link">상세보기</span>
+        {% endif %}
+      </a>
+    {% else %}
+      <div class="news-hero-copy">
+        <span class="news-eyebrow">DCOUT News</span>
+        <h1 id="heroTitle">아직 등록된 뉴스가 없습니다.</h1>
+        <p>서버 공지, 업데이트, 작업 기록이 준비되면 이곳에 표시됩니다.</p>
+      </div>
+      <div class="news-hero-media">
+        <div class="news-hero-placeholder">
+          <span>Latest Updates</span>
+          <strong>{{ today_label }}</strong>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="news-filter-bar" aria-label="검색과 필터">
+    <form class="news-search-form" method="get" action="/news">
+      {% if selected_category %}
+        <input type="hidden" name="category" value="{{ selected_category }}" />
+      {% endif %}
+      {% if selected_tag %}
+        <input type="hidden" name="tag" value="{{ selected_tag }}" />
+      {% endif %}
+      <label class="news-sr-only" for="newsSearch">뉴스 검색</label>
+      <input id="newsSearch" name="q" type="search" value="{{ query }}" placeholder="제목, 본문, 태그 검색" maxlength="80" />
+      <button type="submit">검색</button>
+    </form>
+
+    <div class="news-filter-pills" aria-label="카테고리 필터">
+      <a class="{% if not selected_category %}is-active{% endif %}" href="/news{% if query %}?q={{ query|urlencode }}{% endif %}{% if selected_tag %}{% if query %}&amp;{% else %}?{% endif %}tag={{ selected_tag|urlencode }}{% endif %}">전체</a>
+      {% for item in categories %}
+        <a class="{% if selected_category == item.category %}is-active{% endif %}"
+           href="/news?category={{ item.category|urlencode }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}{% if selected_tag %}&amp;tag={{ selected_tag|urlencode }}{% endif %}">
+          {{ item.label }} <span>{{ item.count }}</span>
         </a>
-      </section>
-    {% endif %}
+      {% endfor %}
+    </div>
+  </section>
 
-    {% if posts %}
-      <section class="news-grid" aria-label="뉴스 목록">
-        {% for post in posts %}
-          <a class="news-card" href="/news/{{ post.slug }}">
-            <div class="meta-row">
-              <span class="badge">{{ post.category }}</span>
-              {% if post.is_pinned %}
-                <span class="pin-badge">PIN</span>
-              {% endif %}
-            </div>
-            <h2>{{ post.title }}</h2>
-            <p>{{ post.summary }}</p>
-            <div class="news-meta">
-              <span>{{ post.created_display }}</span>
-              <span>댓글 {{ post.comment_count }}</span>
-              <span>조회 {{ post.view_count }}</span>
-            </div>
-            <span class="card-more">상세보기</span>
-          </a>
-        {% endfor %}
-      </section>
-    {% elif not featured_post %}
-      <section class="empty-state">
-        <h2>표시할 뉴스가 없습니다.</h2>
-        <p>검색어 또는 카테고리를 변경해 보세요.</p>
-      </section>
-    {% endif %}
+  <div class="news-home-layout">
+    <section class="news-main-column" aria-labelledby="latestTitle">
+      <div class="news-section-heading">
+        <span>HEADLINES</span>
+        <h2 id="latestTitle">
+          {% if query or selected_category or selected_tag %}
+            검색 결과
+          {% else %}
+            최신 기사
+          {% endif %}
+        </h2>
+      </div>
 
-    {% if total_pages > 1 %}
-      <nav class="pagination" aria-label="페이지 이동">
-        {% if has_prev %}
-          <a href="/news?page={{ page - 1 }}{% if selected_category %}&amp;category={{ selected_category|urlencode }}{% endif %}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">이전</a>
-        {% else %}
-          <span class="disabled">이전</span>
-        {% endif %}
-        <span>{{ page }} / {{ total_pages }}</span>
-        {% if has_next %}
-          <a href="/news?page={{ page + 1 }}{% if selected_category %}&amp;category={{ selected_category|urlencode }}{% endif %}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">다음</a>
-        {% else %}
-          <span class="disabled">다음</span>
-        {% endif %}
-      </nav>
-    {% endif %}
-  </main>
+      {% if posts %}
+        <div class="news-grid">
+          {% for post in posts %}
+            {% include "news/partials/article_card.html" %}
+          {% endfor %}
+        </div>
+      {% elif featured_post and page == 1 %}
+        <div class="news-empty">더 표시할 기사가 없습니다.</div>
+      {% else %}
+        <div class="news-empty">
+          <strong>검색 결과가 없습니다.</strong>
+          <span>다른 검색어를 입력해보세요.</span>
+        </div>
+      {% endif %}
 
-  <footer class="news-footer">
-    <p>DCOUT News</p>
-  </footer>
-</body>
-</html>
+      {% include "news/partials/pagination.html" %}
+    </section>
+
+    {% include "news/partials/sidebar.html" %}
+  </div>
+</main>
+{% endblock %}

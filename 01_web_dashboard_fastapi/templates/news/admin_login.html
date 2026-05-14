@@ -6,27 +6,27 @@
   <title>News Admin</title>
   <link rel="stylesheet" href="/static/news/news.css" />
 </head>
-<body class="admin-login-page">
-  <main class="admin-login-wrap">
-    <form class="admin-login-card" method="post" action="/admin/news/login">
-      <span class="admin-badge">Admin Only</span>
+<body class="news-admin-login-body">
+  <main class="news-admin-login-wrap">
+    <form class="news-admin-login-card" method="post" action="/admin/news/login">
+      <span class="news-admin-badge">Admin Only</span>
       <h1>News Admin</h1>
       <p>뉴스 글을 관리하려면 로그인하세요.</p>
 
       {% if error %}
-        <div class="form-alert error" role="alert">{{ error }}</div>
+        <div class="news-alert is-error" role="alert">{{ error }}</div>
       {% endif %}
 
-      <div class="form-field">
+      <div class="news-field">
         <label for="username">아이디</label>
         <input id="username" name="username" value="{{ username }}" autocomplete="username" required />
       </div>
-      <div class="form-field">
+      <div class="news-field">
         <label for="password">비밀번호</label>
         <input id="password" name="password" type="password" autocomplete="current-password" required />
       </div>
-      <button class="primary-button full-width" type="submit">로그인</button>
-      <a class="return-link" href="/news">뉴스 페이지로 돌아가기</a>
+      <button class="news-primary-button full-width" type="submit">로그인</button>
+      <a class="news-return-link" href="/news">뉴스 페이지로 돌아가기</a>
     </form>
   </main>
 </body>

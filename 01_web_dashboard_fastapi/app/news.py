@@ -20,11 +20,12 @@ async def read_form_data(request: Request) -> Dict[str, str]:
 
 
 @router.get("/news", response_class=HTMLResponse)
-def news_list(request: Request, category: str = "", q: str = "", page: int = 1):
-    result = news_service.list_public_posts(category=category, query=q, page=page)
+def news_list(request: Request, category: str = "", q: str = "", tag: str = "", page: int = 1):
+    result = news_service.list_public_posts(category=category, query=q, tag=tag, page=page)
     posts = result["posts"]
     featured_post = posts[0] if page == 1 and posts else None
     card_posts = posts[1:] if featured_post else posts
+    sidebar = news_service.public_home_sidebar()
 
     return templates.TemplateResponse(
         request,
@@ -34,10 +35,14 @@ def news_list(request: Request, category: str = "", q: str = "", page: int = 1):
             **result,
             "today_label": news_service.today_label(),
             "categories": news_service.public_categories(),
+            "category_options": news_service.CATEGORY_OPTIONS,
+            "tags": news_service.public_tags(),
             "selected_category": category.strip()[:40],
             "query": q.strip()[:80],
+            "selected_tag": tag.strip().lstrip("#")[:30],
             "featured_post": featured_post,
             "posts": card_posts,
+            **sidebar,
         },
     )
 
@@ -56,6 +61,7 @@ def news_detail(request: Request, slug: str):
 
     comments = news_service.get_public_comments(int(post["id"]))
     adjacent = news_service.get_adjacent_public_posts(int(post["id"]))
+    related_posts = news_service.related_public_posts(int(post["id"]), post["category"])
     return templates.TemplateResponse(
         request,
         "news/detail.html",
@@ -63,6 +69,7 @@ def news_detail(request: Request, slug: str):
             "request": request,
             "post": post,
             "comments": comments,
+            "related_posts": related_posts,
             "previous_post": adjacent["previous"],
             "next_post": adjacent["next"],
             "comment_error": request.query_params.get("comment_error", ""),

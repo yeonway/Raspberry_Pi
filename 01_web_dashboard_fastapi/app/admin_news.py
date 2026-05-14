@@ -20,7 +20,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(news_service.PROJECT_DIR / "templates"))
 templates.env.filters["urlencode"] = quote_plus
 
-CATEGORY_OPTIONS = ["general", "notice", "update", "maintenance"]
+CATEGORY_OPTIONS = news_service.CATEGORY_OPTIONS
 
 
 async def read_form_data(request: Request) -> Dict[str, str]:
