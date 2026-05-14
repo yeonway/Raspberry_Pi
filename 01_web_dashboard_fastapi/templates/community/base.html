@@ -4,8 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}DCOUT Community{% endblock %}</title>
-  <link rel="stylesheet" href="/static/community/community.css" />
-  <script src="/static/community/community.js" defer></script>
+  <link rel="stylesheet" href="/static/community/community.css?v=20260514-actions2" />
+  <style>
+    .community-menu-popover[hidden],
+    .community-report-form[hidden],
+    dialog.community-modal:not([open]) { display: none !important; }
+  </style>
+  <script src="/static/community/community.js?v=20260514-actions2" defer></script>
 </head>
 <body>
   <header class="community-header">
