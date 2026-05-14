@@ -1,0 +1,15 @@
+[Unit]
+Description=Qwen Moderation llama.cpp Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=user
+WorkingDirectory=/home/user/Raspberry_Pi/01_web_dashboard_fastapi
+EnvironmentFile=/home/user/Raspberry_Pi/01_web_dashboard_fastapi/.env
+ExecStart=/home/user/Raspberry_Pi/01_web_dashboard_fastapi/scripts/start_qwen_moderation_server.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

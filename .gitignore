@@ -9,6 +9,9 @@ local.properties
 *.db
 *.sqlite
 *.sqlite3
+*.gguf
+*.safetensors
+*.bin
 *.zip
 backup_*.zip
 *.sha256
@@ -19,6 +22,8 @@ ngrok.yml
 
 logs/
 backups/
+models/
+llama.cpp/
 __pycache__/
 .venv/
 .gradle/
