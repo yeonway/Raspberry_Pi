@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Community Admin{% endblock %}</title>
+  <link rel="stylesheet" href="/static/community/community.css?v=20260514-actions3" />
+  <style>
+    .community-menu-popover[hidden],
+    .community-report-form[hidden],
+    dialog.community-modal:not([open]) { display: none !important; }
+  </style>
+  <script src="/static/community/community.js?v=20260514-actions3" defer></script>
+</head>
+<body class="community-admin-body">
+  <header class="community-admin-header">
+    <div>
+      <span class="community-admin-badge">관리자</span>
+      <h1>커뮤니티 관리</h1>
+      <p>신고, 숨김 글, moderation 로그를 관리합니다.</p>
+    </div>
+    <nav class="community-admin-nav">
+      <a href="/admin/community">대시보드</a>
+      <a href="/admin/community/posts">글</a>
+      <a href="/admin/community/review">검토</a>
+      <a href="/admin/community/comments">댓글</a>
+      <a href="/admin/community/reports">신고</a>
+      <a href="/admin/community/bans">차단</a>
+      <a href="/admin/community/activity">활동</a>
+      <a href="/admin/community/revisions">수정 이력</a>
+      <a href="/admin/community/moderation">필터 로그</a>
+      <a href="/admin/community/settings">설정</a>
+      <a href="/community">공개 보기</a>
+      <form method="post" action="/admin/community/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <button type="submit">로그아웃</button>
+      </form>
+    </nav>
+  </header>
+  <main class="community-admin-shell">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

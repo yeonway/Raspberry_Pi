@@ -1,0 +1,25 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-panel">
+  <div class="community-panel-head">
+    <h2>글 관리</h2>
+    <div><a href="/admin/community/notices/new">공지 작성</a> · <a href="/admin/community/posts?status=hidden">숨김/검토만</a></div>
+  </div>
+  <div class="community-admin-list">
+    {% for post in posts %}
+      <article class="community-admin-row">
+        <div>
+          <strong>{{ post.title }}</strong>
+          <span>{{ post.board_name }} · {{ post.status_label }} · 신고 {{ post.report_count }} · {{ post.created_display }}</span>
+        </div>
+        <div class="community-admin-actions">
+          <a href="/community/posts/{{ post.id }}">보기</a>
+          <form method="post" action="/admin/community/posts/{{ post.id }}/hide"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">숨김</button></form>
+          <form method="post" action="/admin/community/posts/{{ post.id }}/restore"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">복구</button></form>
+          <form method="post" action="/admin/community/posts/{{ post.id }}/delete" data-confirm="게시글을 삭제할까요?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button class="danger" type="submit">삭제</button></form>
+        </div>
+      </article>
+    {% else %}<div class="community-empty">게시글이 없습니다.</div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

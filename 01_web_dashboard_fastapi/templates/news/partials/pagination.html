@@ -1,0 +1,15 @@
+{% if total_pages > 1 %}
+  <nav class="news-pagination" aria-label="페이지 이동">
+    {% if has_prev %}
+      <a href="/news?page={{ page - 1 }}{% if selected_category %}&amp;category={{ selected_category|urlencode }}{% endif %}{% if query %}&amp;q={{ query|urlencode }}{% endif %}{% if selected_tag %}&amp;tag={{ selected_tag|urlencode }}{% endif %}">이전</a>
+    {% else %}
+      <span class="is-disabled">이전</span>
+    {% endif %}
+    <strong>{{ page }} / {{ total_pages }}</strong>
+    {% if has_next %}
+      <a href="/news?page={{ page + 1 }}{% if selected_category %}&amp;category={{ selected_category|urlencode }}{% endif %}{% if query %}&amp;q={{ query|urlencode }}{% endif %}{% if selected_tag %}&amp;tag={{ selected_tag|urlencode }}{% endif %}">다음</a>
+    {% else %}
+      <span class="is-disabled">다음</span>
+    {% endif %}
+  </nav>
+{% endif %}

@@ -1,0 +1,21 @@
+dashboard:
+  # FastAPI dashboard URL on the Raspberry Pi.
+  base_url: "http://127.0.0.1:8000"
+  # Must match DASHBOARD_EVENT_TOKEN in 01_web_dashboard_fastapi/.env.
+  event_token: "CHANGE_ME"
+  timeout_seconds: 10
+
+phone_ai:
+  max_tokens: 180
+
+chat_trigger:
+  enabled: true
+  prefixes:
+    - "!ai"
+    - "@ai"
+
+responses:
+  prefix: "[AI]"
+
+limits:
+  cooldown_seconds: 5

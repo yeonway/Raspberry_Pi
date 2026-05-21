@@ -1,0 +1,26 @@
+<a class="news-card" href="/news/{{ post.slug }}">
+  <div class="news-card-media">
+    {% if post.cover_image_url %}
+      <img src="{{ post.cover_image_url }}" alt="" loading="lazy" />
+    {% else %}
+      <div class="news-card-placeholder">
+        <span>{{ post.category_label }}</span>
+      </div>
+    {% endif %}
+  </div>
+  <div class="news-card-body">
+    <div class="news-meta-line">
+      <span class="news-badge">{{ post.category_label }}</span>
+      {% if post.is_pinned %}
+        <span class="news-pin">주요</span>
+      {% endif %}
+    </div>
+    <h2>{{ post.title }}</h2>
+    <p>{{ post.summary }}</p>
+    <div class="news-card-meta">
+      <span>{{ post.created_display }}</span>
+      <span>조회 {{ post.view_count }}</span>
+      <span>댓글 {{ post.comment_count }}</span>
+    </div>
+  </div>
+</a>

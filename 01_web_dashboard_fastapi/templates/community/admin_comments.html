@@ -1,0 +1,21 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-panel">
+  <div class="community-panel-head"><h2>댓글 관리</h2><a href="/admin/community/comments?status=hidden">숨김/검토만</a></div>
+  <div class="community-admin-list">
+    {% for comment in comments %}
+      <article class="community-admin-row">
+        <div>
+          <strong>{{ comment.content[:80] }}</strong>
+          <span>{{ comment.post_title }} · {{ comment.status_label }} · 신고 {{ comment.report_count }} · {{ comment.created_display }}</span>
+        </div>
+        <div class="community-admin-actions">
+          <form method="post" action="/admin/community/comments/{{ comment.id }}/hide"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">숨김</button></form>
+          <form method="post" action="/admin/community/comments/{{ comment.id }}/restore"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">복구</button></form>
+          <form method="post" action="/admin/community/comments/{{ comment.id }}/delete" data-confirm="댓글을 삭제할까요?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button class="danger" type="submit">삭제</button></form>
+        </div>
+      </article>
+    {% else %}<div class="community-empty">댓글이 없습니다.</div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

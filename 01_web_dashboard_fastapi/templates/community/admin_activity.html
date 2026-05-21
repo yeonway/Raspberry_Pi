@@ -1,0 +1,67 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-panel">
+  <div class="community-panel-head"><h2>hash별 활동 내역</h2></div>
+  <form class="community-search" method="get" action="/admin/community/activity">
+    <select name="subject_type">
+      <option value="">종류 선택</option>
+      <option value="ip_hash" {% if subject_type == "ip_hash" %}selected{% endif %}>ip_hash</option>
+      <option value="session_hash" {% if subject_type == "session_hash" %}selected{% endif %}>session_hash</option>
+    </select>
+    <input name="subject_value" value="{{ subject_value }}" placeholder="hash 값" />
+    <button class="community-button primary" type="submit">조회</button>
+  </form>
+  {% if subject_value %}
+    <form class="community-form compact" method="post" action="/admin/community/activity/notes">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="subject_type" value="{{ subject_type }}" />
+      <input type="hidden" name="subject_value" value="{{ subject_value }}" />
+      <label>관리자 메모
+        <textarea name="note" rows="3" maxlength="1000" placeholder="공개 페이지에는 표시되지 않습니다."></textarea>
+      </label>
+      <button class="community-button secondary" type="submit">메모 저장</button>
+    </form>
+  {% endif %}
+</section>
+
+{% if subject_value %}
+<div class="community-admin-grid">
+  <section class="community-panel">
+    <h2>작성 글</h2>
+    {% for post in posts %}
+      <div class="community-admin-item"><strong>{{ post.title }}</strong><span>{{ post.status_label }} · {{ post.created_display }}</span></div>
+    {% else %}<div class="community-empty">작성 글이 없습니다.</div>{% endfor %}
+  </section>
+  <section class="community-panel">
+    <h2>작성 댓글</h2>
+    {% for comment in comments %}
+      <div class="community-admin-item"><strong>{{ comment.content[:70] }}</strong><span>{{ comment.status_label }} · {{ comment.created_display }}</span></div>
+    {% else %}<div class="community-empty">작성 댓글이 없습니다.</div>{% endfor %}
+  </section>
+  <section class="community-panel">
+    <h2>신고한 내역</h2>
+    {% for report in reports_made %}
+      <div class="community-admin-item"><strong>{{ report.target_type_label }} #{{ report.target_id }}</strong><span>{{ report.reason_label }} · {{ report.status_label }}</span></div>
+    {% else %}<div class="community-empty">신고한 내역이 없습니다.</div>{% endfor %}
+  </section>
+  <section class="community-panel">
+    <h2>신고받은 내역</h2>
+    {% for report in reports_received %}
+      <div class="community-admin-item"><strong>{{ report.target_type_label }} #{{ report.target_id }}</strong><span>{{ report.reason_label }} · {{ report.status_label }}</span></div>
+    {% else %}<div class="community-empty">신고받은 내역이 없습니다.</div>{% endfor %}
+  </section>
+  <section class="community-panel">
+    <h2>좋아요 기록</h2>
+    {% for reaction in reactions %}
+      <div class="community-admin-item"><strong>{{ reaction.target_type_label }} #{{ reaction.target_id }}</strong><span>{{ reaction.action_label }} · {{ reaction.created_display }}</span></div>
+    {% else %}<div class="community-empty">좋아요 기록이 없습니다.</div>{% endfor %}
+  </section>
+  <section class="community-panel">
+    <h2>관리자 메모</h2>
+    {% for note in notes %}
+      <div class="community-admin-item"><strong>{{ note.note }}</strong><span>{{ note.created_at }}</span></div>
+    {% else %}<div class="community-empty">메모가 없습니다.</div>{% endfor %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}

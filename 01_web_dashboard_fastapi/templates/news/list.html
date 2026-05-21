@@ -1,0 +1,109 @@
+{% extends "news/base.html" %}
+
+{% block title %}DCOUT News{% endblock %}
+
+{% block content %}
+<main class="news-shell news-home">
+  <section class="news-home-hero" aria-labelledby="heroTitle">
+    {% if featured_post %}
+      <div class="news-hero-copy">
+        <div class="news-meta-line">
+          <span class="news-eyebrow">주요 기사</span>
+          <span class="news-badge">{{ featured_post.category_label }}</span>
+          {% if featured_post.is_pinned %}
+            <span class="news-pin">상단 고정</span>
+          {% endif %}
+        </div>
+        <h1 id="heroTitle">{{ featured_post.title }}</h1>
+        <p>{{ featured_post.summary }}</p>
+        <div class="news-hero-meta">
+          <span>{{ featured_post.article_date_display }}</span>
+          <span>조회 {{ featured_post.view_count }}</span>
+          <span>댓글 {{ featured_post.comment_count }}</span>
+        </div>
+        <a class="news-primary-link" href="/news/{{ featured_post.slug }}">자세히 보기</a>
+      </div>
+      <a class="news-hero-media" href="/news/{{ featured_post.slug }}" aria-label="{{ featured_post.title }}">
+        {% if featured_post.cover_image_url %}
+          <img src="{{ featured_post.cover_image_url }}" alt="" />
+        {% else %}
+          <div class="news-hero-placeholder">
+            <span>DCOUT News</span>
+            <strong>{{ featured_post.category_label }}</strong>
+          </div>
+        {% endif %}
+      </a>
+    {% else %}
+      <div class="news-hero-copy">
+        <span class="news-eyebrow">DCOUT News</span>
+        <h1 id="heroTitle">아직 등록된 뉴스가 없습니다.</h1>
+        <p>서버 공지, 업데이트, 작업 기록이 준비되면 이곳에 표시됩니다.</p>
+      </div>
+      <div class="news-hero-media">
+        <div class="news-hero-placeholder">
+          <span>Latest Updates</span>
+          <strong>{{ today_label }}</strong>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="news-filter-bar" aria-label="검색과 필터">
+    <form class="news-search-form" method="get" action="/news">
+      {% if selected_category %}
+        <input type="hidden" name="category" value="{{ selected_category }}" />
+      {% endif %}
+      {% if selected_tag %}
+        <input type="hidden" name="tag" value="{{ selected_tag }}" />
+      {% endif %}
+      <label class="news-sr-only" for="newsSearch">뉴스 검색</label>
+      <input id="newsSearch" name="q" type="search" value="{{ query }}" placeholder="제목, 본문, 태그 검색" maxlength="80" />
+      <button type="submit">검색</button>
+    </form>
+
+    <div class="news-filter-pills" aria-label="카테고리 필터">
+      <a class="{% if not selected_category %}is-active{% endif %}" href="/news{% if query %}?q={{ query|urlencode }}{% endif %}{% if selected_tag %}{% if query %}&amp;{% else %}?{% endif %}tag={{ selected_tag|urlencode }}{% endif %}">전체</a>
+      {% for item in categories %}
+        <a class="{% if selected_category == item.category %}is-active{% endif %}"
+           href="/news?category={{ item.category|urlencode }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}{% if selected_tag %}&amp;tag={{ selected_tag|urlencode }}{% endif %}">
+          {{ item.label }} <span>{{ item.count }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="news-home-layout">
+    <section class="news-main-column" aria-labelledby="latestTitle">
+      <div class="news-section-heading">
+        <span>HEADLINES</span>
+        <h2 id="latestTitle">
+          {% if query or selected_category or selected_tag %}
+            검색 결과
+          {% else %}
+            최신 기사
+          {% endif %}
+        </h2>
+      </div>
+
+      {% if posts %}
+        <div class="news-grid">
+          {% for post in posts %}
+            {% include "news/partials/article_card.html" %}
+          {% endfor %}
+        </div>
+      {% elif featured_post and page == 1 %}
+        <div class="news-empty">더 표시할 기사가 없습니다.</div>
+      {% else %}
+        <div class="news-empty">
+          <strong>검색 결과가 없습니다.</strong>
+          <span>다른 검색어를 입력해보세요.</span>
+        </div>
+      {% endif %}
+
+      {% include "news/partials/pagination.html" %}
+    </section>
+
+    {% include "news/partials/sidebar.html" %}
+  </div>
+</main>
+{% endblock %}

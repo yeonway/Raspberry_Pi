@@ -1,0 +1,17 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-panel">
+  <div class="community-panel-head"><h2>공지 작성</h2><a href="/admin/community/posts">글 관리로 돌아가기</a></div>
+  {% if error %}<div class="community-alert danger">{{ error }}</div>{% endif %}
+  <form class="community-form" method="post" action="/admin/community/notices/new">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <label>제목
+      <input name="title" value="{{ form.get('title', '') }}" minlength="2" maxlength="80" required />
+    </label>
+    <label>내용
+      <textarea name="content" rows="12" minlength="2" maxlength="3000" required>{{ form.get('content', '') }}</textarea>
+    </label>
+    <button class="community-button primary" type="submit">공지 게시</button>
+  </form>
+</section>
+{% endblock %}

@@ -18,7 +18,7 @@ Raspberry Pi 5에서 Paper Minecraft 서버와 FastAPI 대시보드를 운영하
 - Token 인증
 - MockAiEngine 기반 1차 MVP
 - RAG, 플레이어 기억, 요청 로그 저장
-- 2차 작업에서 Gemma 4 E2B 4bit 및 LiteRT-LM 연결
+- 2차 작업에서 Gemma 4 E4B-it 4bit GGUF 및 llama.cpp JNI 연결
 
 ### Synology NAS
 - Minecraft 월드와 프로젝트 백업 저장소
@@ -74,7 +74,7 @@ Raspberry Pi 5에서 Paper Minecraft 서버와 FastAPI 대시보드를 운영하
 - Raspberry Pi 실기기에서 Paper와 FastAPI 실행 검증
 - NAS rsync 실제 연결
 - Phone AI Bridge 실기기 연결
-- Gemma 4 E2B 4bit 및 LiteRT-LM 연결
+- Gemma 4 E4B-it 4bit GGUF 및 llama.cpp JNI 연결
 - 대시보드의 좌표 DB CRUD, AI 질문 테스트, 화이트리스트 관리 구현
 
 ## 민감정보 원칙

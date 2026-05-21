@@ -1,0 +1,25 @@
+<div class="community-post-list">
+  {% for post in posts if posts is defined %}
+    <a class="community-post-row" href="/community/posts/{{ post.id }}">
+      <div>
+        <span class="community-badge">{{ post.board_name }}</span>
+        {% if post.is_notice %}<span class="community-badge warning">공지</span>{% endif %}
+        <h3>{{ post.title }}{% if post.is_edited %}<span class="community-inline-muted">수정됨</span>{% endif %}</h3>
+        <p>{{ post.content[:120] }}{% if post.content|length > 120 %}...{% endif %}</p>
+      </div>
+      <dl>
+        <div><dt>조회</dt><dd>{{ post.view_count }}</dd></div>
+        <div><dt>좋아요</dt><dd>{{ post.like_count }}</dd></div>
+        <div><dt>댓글</dt><dd>{{ post.comment_count }}</dd></div>
+      </dl>
+      <small>{{ post.created_display }}</small>
+    </a>
+  {% else %}
+    <div class="community-empty">{% if query %}검색 결과가 없습니다.{% else %}표시할 게시글이 없습니다.{% endif %}</div>
+  {% endfor %}
+</div>
+{% if has_more %}
+  <div class="community-more">
+    <a class="community-button ghost" href="{{ list_base_url or request.url.path }}{% if '?' in (list_base_url or '') %}&{% else %}?{% endif %}offset={{ next_offset }}">더 보기</a>
+  </div>
+{% endif %}

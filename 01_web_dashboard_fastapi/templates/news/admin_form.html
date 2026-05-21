@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title }} · News Admin</title>
+  <link rel="stylesheet" href="/static/news/news.css" />
+  <script src="/static/news/news.js" defer></script>
+</head>
+<body class="news-admin-body">
+  <header class="news-admin-header">
+    <div>
+      <span class="news-admin-badge">News Admin</span>
+      <h1>{{ page_title }}</h1>
+      <p>기사 제목, 요약, 본문, 발행 설정을 관리합니다.</p>
+    </div>
+    <div class="news-admin-actions">
+      <a class="news-admin-button secondary" href="/admin/news">관리 목록</a>
+      <a class="news-admin-button ghost" href="/news">공개 뉴스 보기</a>
+    </div>
+  </header>
+
+  <main class="news-admin-container">
+    <div class="news-editor-grid">
+      <form class="news-admin-panel news-editor-form" method="post" action="{{ form_action }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+        {% if errors %}
+          <div class="news-alert is-error" role="alert">입력값을 확인하세요.</div>
+        {% endif %}
+
+        <div class="news-field">
+          <label for="title">제목</label>
+          <input id="title" name="title" value="{{ post.title }}" maxlength="140" required data-preview-title />
+          {% if errors.get("title") %}<small class="news-field-error">{{ errors.get("title") }}</small>{% endif %}
+        </div>
+
+        <div class="news-field">
+          <label for="slug">슬러그</label>
+          <input id="slug" name="slug" value="{{ post.slug }}" maxlength="80" data-preview-slug />
+        </div>
+
+        <div class="news-form-row">
+          <div class="news-field">
+            <label for="category">카테고리</label>
+            <select id="category" name="category" data-preview-category>
+              {% if post.category and post.category not in category_options|map(attribute='value')|list %}
+                <option value="{{ post.category }}" selected>{{ post.category }}</option>
+              {% endif %}
+              {% for option in category_options %}
+                <option value="{{ option.value }}" {% if post.category == option.value %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="news-field">
+            <label for="authorName">작성자명</label>
+            <input id="authorName" name="author_name" value="{{ post.author_name or 'DCOUT News' }}" maxlength="60" />
+          </div>
+        </div>
+
+        <div class="news-field">
+          <label for="summary">요약</label>
+          <textarea id="summary" name="summary" rows="4" maxlength="400" data-preview-summary>{{ post.summary }}</textarea>
+        </div>
+
+        <div class="news-field">
+          <label for="summaryBullets">핵심 요약 bullet</label>
+          <textarea id="summaryBullets" name="summary_bullets" rows="5" placeholder="한 줄에 하나씩 입력">{{ post.summary_bullets or '' }}</textarea>
+        </div>
+
+        <div class="news-field">
+          <label for="content">본문</label>
+          <textarea id="content" name="content" class="news-content-editor" required data-preview-content>{{ post.content }}</textarea>
+          {% if errors.get("content") %}<small class="news-field-error">{{ errors.get("content") }}</small>{% endif %}
+        </div>
+
+        <div class="news-field">
+          <label for="coverImageUrl">대표 이미지 URL</label>
+          <input id="coverImageUrl" name="cover_image_url" value="{{ post.cover_image_url or '' }}" inputmode="url" />
+          {% if errors.get("cover_image_url") %}<small class="news-field-error">{{ errors.get("cover_image_url") }}</small>{% endif %}
+        </div>
+
+        <div class="news-field">
+          <label for="coverImageCaption">대표 이미지 캡션</label>
+          <input id="coverImageCaption" name="cover_image_caption" value="{{ post.cover_image_caption or '' }}" maxlength="180" />
+        </div>
+
+        <div class="news-form-row">
+          <div class="news-field">
+            <label for="tags">태그</label>
+            <input id="tags" name="tags" value="{{ post.tags or '' }}" maxlength="300" placeholder="쉼표로 구분" />
+          </div>
+          <div class="news-field">
+            <label for="sourceLabel">출처 라벨</label>
+            <input id="sourceLabel" name="source_label" value="{{ post.source_label or 'DCOUT News' }}" maxlength="80" />
+          </div>
+        </div>
+
+        <div class="news-check-grid">
+          <label class="news-check-card" for="isPublic">
+            <input id="isPublic" name="is_public" type="checkbox" {% if post.is_public %}checked{% endif %} />
+            <span>공개 여부</span>
+          </label>
+          <label class="news-check-card" for="isPinned">
+            <input id="isPinned" name="is_pinned" type="checkbox" {% if post.is_pinned %}checked{% endif %} />
+            <span>상단 고정</span>
+          </label>
+        </div>
+
+        <div class="news-editor-actions">
+          <button class="news-admin-button secondary" type="submit" name="intent" value="draft">비공개 저장</button>
+          <button class="news-admin-button primary" type="submit" name="intent" value="publish">공개 발행</button>
+          <button class="news-admin-button ghost" type="submit" name="intent" value="save">저장</button>
+          <a class="news-admin-button ghost" href="/admin/news">취소</a>
+        </div>
+      </form>
+
+      <aside class="news-editor-side">
+        <section class="news-admin-panel news-preview-panel" aria-labelledby="previewTitle">
+          <div class="news-panel-head">
+            <h2 id="previewTitle">기사 미리보기</h2>
+          </div>
+          <div class="news-preview-card">
+            <span class="news-badge" data-preview-category-output>{{ post.category_label or post.category }}</span>
+            <h3 data-preview-title-output>{{ post.title or "제목 없음" }}</h3>
+            <p data-preview-summary-output>{{ post.summary or "요약이 비어 있으면 본문에서 자동 생성됩니다." }}</p>
+            <small>/news/<span data-preview-slug-output>{{ post.slug or "자동 생성" }}</span></small>
+          </div>
+          <div class="news-preview-body" data-preview-content-output>{{ post.content[:420] if post.content else "본문 미리보기" }}</div>
+        </section>
+
+        <section class="news-admin-panel">
+          <div class="news-status-list">
+            <div>
+              <span>상태</span>
+              {% if post.is_public %}
+                <strong class="news-success-text">공개</strong>
+              {% else %}
+                <strong>비공개</strong>
+              {% endif %}
+            </div>
+            <div>
+              <span>발행일</span>
+              <strong>{{ post.published_display or post.published_at or "-" }}</strong>
+            </div>
+          </div>
+        </section>
+
+        {% if mode == "edit" %}
+          <form class="news-admin-panel news-danger-panel" method="post" action="/admin/news/{{ post.id }}/delete" data-confirm="이 뉴스 글과 연결된 댓글을 삭제할까요?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <h2>삭제</h2>
+            <p>삭제하면 연결된 댓글도 함께 삭제됩니다.</p>
+            <button class="news-admin-button danger full-width" type="submit">뉴스 삭제</button>
+          </form>
+        {% endif %}
+      </aside>
+    </div>
+  </main>
+</body>
+</html>

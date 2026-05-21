@@ -53,6 +53,7 @@ Raspberry Pi 5는 대형 자동화 장치에 취약할 수 있습니다. 다음 
 
 ## 관련 문서
 
+- `phone_ai_bridge_paper_plugin/README.md`
 - `paper_setup.md`
 - `spark_setup.md`
 - `server.properties.example`

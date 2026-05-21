@@ -1,0 +1,51 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-stat-grid">
+  <article><strong>{{ stats.post_count }}</strong><span>전체 글</span></article>
+  <article><strong>{{ stats.hidden_post_count }}</strong><span>숨김/검토 글</span></article>
+  <article><strong>{{ stats.comment_count }}</strong><span>전체 댓글</span></article>
+  <article><strong>{{ stats.open_report_count }}</strong><span>접수된 신고</span></article>
+  <article><strong>{{ stats.ai_flag_count }}</strong><span>필터 플래그</span></article>
+</section>
+<div class="community-admin-grid">
+  <section class="community-panel">
+    <div class="community-panel-head"><h2>검토 대기 글</h2><a href="/admin/community/review">전체 보기</a></div>
+    {% for post in pending_posts %}
+      <div class="community-admin-item">
+        <strong>{{ post.title }}</strong>
+        <span>{{ post.board_name }} · {{ post.status_label }} · {{ post.created_display }}</span>
+      </div>
+    {% else %}
+      <div class="community-empty">검토 대기 글이 없습니다.</div>
+    {% endfor %}
+  </section>
+  <section class="community-panel">
+    <h2>최근 신고</h2>
+    {% for report in recent_reports %}
+      <div class="community-admin-item">
+        <strong>{{ report.target_type_label }} #{{ report.target_id }}</strong>
+        <span>{{ report.reason_label }} · {{ report.status_label }}</span>
+      </div>
+    {% else %}
+      <div class="community-empty">신고가 없습니다.</div>
+    {% endfor %}
+  </section>
+  <section class="community-panel">
+    <h2>게시판별 글 수</h2>
+    {% for board in board_counts %}
+      <a class="community-admin-item" href="/community/boards/{{ board.slug }}"><strong>{{ board.name }}</strong><span>게시글 {{ board.post_count }}</span></a>
+    {% endfor %}
+  </section>
+  <section class="community-panel">
+    <h2>검토 대기 댓글</h2>
+    {% for comment in pending_comments %}
+      <div class="community-admin-item">
+        <strong>{{ comment.content[:80] }}</strong>
+        <span>{{ comment.post_title }} · {{ comment.status_label }} · {{ comment.created_display }}</span>
+      </div>
+    {% else %}
+      <div class="community-empty">검토 대기 댓글이 없습니다.</div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

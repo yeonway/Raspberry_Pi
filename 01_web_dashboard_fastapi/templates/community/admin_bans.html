@@ -1,0 +1,29 @@
+{% extends "community/admin_base.html" %}
+{% block content %}
+<section class="community-panel">
+  <h2>차단 관리</h2>
+  <p class="community-muted">IP/session 원문은 저장하지 않고 hash 값만 관리합니다.</p>
+  <form class="community-search" method="post" action="/admin/community/bans">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <select name="ban_type">
+      <option value="ip_hash">ip_hash</option>
+      <option value="session_hash">session_hash</option>
+    </select>
+    <input name="ban_value" placeholder="hash 값" required />
+    <input name="reason" placeholder="차단 사유" />
+    <button class="community-button danger" type="submit">차단 추가</button>
+  </form>
+  <div class="community-admin-list">
+    {% for ban in bans %}
+      <article class="community-admin-row">
+        <div>
+          <strong>{{ ban.ban_type }}</strong>
+          <span>{{ ban.reason }} · {{ ban.created_at }}{% if ban.expires_at %} · 만료 {{ ban.expires_at }}{% endif %}</span>
+        </div>
+      </article>
+    {% else %}
+      <div class="community-empty">등록된 차단 항목이 없습니다.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -15,6 +15,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_FILE = BASE_DIR / ".env"
 COOKIE_NAME = "dashboard_session"
 EPHEMERAL_SESSION_SECRET = secrets.token_urlsafe(32)
+PUBLIC_AUTH_PATHS = (
+    "/news",
+    "/community",
+    "/admin/community",
+    "/admin/community/login",
+    "/admin/community/logout",
+    "/admin/news",
+    "/admin/news/login",
+    "/admin/news/logout",
+    "/static/community/",
+    "/static/news/",
+)
 
 
 def load_env_file():
@@ -197,7 +209,38 @@ def get_current_user(request: Request) -> Optional[str]:
     return payload.get("sub")
 
 
+def is_dashboard_auth_public_path(path: str) -> bool:
+    normalized = path or "/"
+    if normalized in {
+        "/news",
+        "/news/",
+        "/community",
+        "/community/",
+        "/admin/news",
+        "/admin/news/",
+        "/admin/community",
+        "/admin/community/",
+    }:
+        return True
+    if normalized.startswith("/news/"):
+        return True
+    if normalized.startswith("/community/"):
+        return True
+    if normalized.startswith("/admin/news/"):
+        return True
+    if normalized.startswith("/admin/community/"):
+        return True
+    if normalized.startswith("/static/news/"):
+        return True
+    if normalized.startswith("/static/community/"):
+        return True
+    return any(normalized == item for item in PUBLIC_AUTH_PATHS)
+
+
 def require_auth(request: Request) -> str:
+    if is_dashboard_auth_public_path(request.url.path):
+        return "__public_news_path__"
+
     username = get_current_user(request)
 
     if not username:

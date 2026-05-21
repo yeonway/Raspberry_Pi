@@ -1,0 +1,57 @@
+<aside class="news-sidebar" aria-label="뉴스 사이드바">
+  <section class="news-side-panel">
+    <h2>많이 본 기사</h2>
+    <ol class="news-ranked-list">
+      {% for item in popular_posts %}
+        <li>
+          <a href="/news/{{ item.slug }}">{{ item.title }}</a>
+          <span>조회 {{ item.view_count }}</span>
+        </li>
+      {% else %}
+        <li class="news-muted">집계할 기사가 없습니다.</li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="news-side-panel">
+    <h2>댓글 많은 기사</h2>
+    <ol class="news-ranked-list">
+      {% for item in commented_posts %}
+        <li>
+          <a href="/news/{{ item.slug }}">{{ item.title }}</a>
+          <span>댓글 {{ item.comment_count }}</span>
+        </li>
+      {% else %}
+        <li class="news-muted">댓글이 아직 없습니다.</li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="news-side-panel">
+    <h2>최근 업데이트</h2>
+    <div class="news-mini-list">
+      {% for item in recent_posts %}
+        <a href="/news/{{ item.slug }}">
+          <span>{{ item.category_label }}</span>
+          <strong>{{ item.title }}</strong>
+        </a>
+      {% else %}
+        <p class="news-muted">업데이트된 기사가 없습니다.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if tags %}
+    <section class="news-side-panel">
+      <h2>태그</h2>
+      <div class="news-tag-cloud">
+        {% for item in tags %}
+          <a class="{% if selected_tag == item.tag %}is-active{% endif %}"
+             href="/news?tag={{ item.tag|urlencode }}{% if selected_category %}&amp;category={{ selected_category|urlencode }}{% endif %}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">
+            #{{ item.tag }}
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+</aside>

@@ -15,6 +15,7 @@ import io.ktor.server.request.httpMethod
 import io.ktor.server.request.receiveText
 import io.ktor.server.request.uri
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
@@ -36,6 +37,10 @@ class LocalHttpServer(private val settingsStore: SettingsStore, private val rout
                     post("/api/player/{uuid}/memory") { call.forwardToRoutes() }
                     post("/api/rag/ingest") { call.forwardToRoutes() }
                     post("/api/rag/search") { call.forwardToRoutes() }
+                    get("/api/coordinates") { call.forwardToRoutes() }
+                    post("/api/coordinates") { call.forwardToRoutes() }
+                    post("/api/coordinates/search") { call.forwardToRoutes() }
+                    delete("/api/coordinates/{id}") { call.forwardToRoutes() }
                     get("/api/logs") { call.forwardToRoutes() }
                 }
             }
@@ -63,7 +68,7 @@ class LocalHttpServer(private val settingsStore: SettingsStore, private val rout
             method = request.httpMethod.value,
             rawPath = request.uri,
             headers = request.headers.lowercaseMap(),
-            body = if (request.httpMethod.value == "GET") "" else receiveText(),
+            body = if (request.httpMethod.value == "POST") receiveText() else "",
             remoteIp = request.origin.remoteHost,
         )
         respondText(

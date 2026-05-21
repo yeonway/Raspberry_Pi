@@ -1,0 +1,128 @@
+{% extends "news/base.html" %}
+
+{% block title %}{{ post.title }} · DCOUT News{% endblock %}
+
+{% block content %}
+<main class="news-article-shell">
+  <nav class="news-breadcrumb" aria-label="기사 위치">
+    <a class="news-back-link" href="/news">← 뉴스 목록</a>
+    <span>DCOUT News</span>
+    <span>{{ post.category_label }}</span>
+    <span aria-current="page">{{ post.title }}</span>
+  </nav>
+
+  <article class="news-article" data-article>
+    <header class="news-article-header">
+      <div class="news-meta-line">
+        <span class="news-badge">{{ post.category_label }}</span>
+        {% if post.is_pinned %}
+          <span class="news-pin">주요 기사</span>
+        {% endif %}
+      </div>
+      <h1>{{ post.title }}</h1>
+      {% if post.summary %}
+        <p class="news-article-summary">{{ post.summary }}</p>
+      {% endif %}
+      <div class="news-article-meta">
+        <span>{{ post.source_label }}</span>
+        <span>{{ post.author_name }}</span>
+        <span>입력 {{ post.article_date_display }}</span>
+        {% if post.updated_at and post.updated_at != post.created_at %}
+          <span>수정 {{ post.updated_display }}</span>
+        {% endif %}
+        <span>조회 {{ post.view_count }}</span>
+        <span>댓글 {{ post.comment_count }}</span>
+      </div>
+    </header>
+
+    <div class="news-utility-bar" aria-label="기사 도구">
+      <button type="button" data-copy-url>URL 복사</button>
+      <button type="button" data-share-url>공유</button>
+      <span class="news-utility-divider" aria-hidden="true"></span>
+      <button type="button" data-font-size="small">작게</button>
+      <button type="button" data-font-size="normal">보통</button>
+      <button type="button" data-font-size="large">크게</button>
+      <button type="button" data-print>인쇄</button>
+    </div>
+
+    {% if post.cover_image_url %}
+      <figure class="news-cover">
+        <img src="{{ post.cover_image_url }}" alt="{{ post.title }} 대표 이미지" />
+        {% if post.cover_image_caption %}
+          <figcaption>{{ post.cover_image_caption }}</figcaption>
+        {% endif %}
+      </figure>
+    {% else %}
+      <div class="news-cover news-cover-placeholder" role="img" aria-label="기본 기사 배너">
+        <span>DCOUT News</span>
+        <strong>{{ post.category_label }}</strong>
+      </div>
+    {% endif %}
+
+    {% if post.summary_bullet_list %}
+      <section class="news-summary-box" aria-labelledby="summaryBoxTitle">
+        <h2 id="summaryBoxTitle">핵심 요약</h2>
+        <ul>
+          {% for item in post.summary_bullet_list %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% elif post.summary %}
+      <section class="news-summary-box" aria-labelledby="summaryBoxTitle">
+        <h2 id="summaryBoxTitle">핵심 요약</h2>
+        <p>{{ post.summary }}</p>
+      </section>
+    {% endif %}
+
+    <div class="news-article-body" data-article-body>
+      {{ post.content_html|safe }}
+    </div>
+
+    {% if post.tag_list %}
+      <nav class="news-article-tags" aria-label="태그">
+        {% for tag in post.tag_list %}
+          <a href="/news?tag={{ tag|urlencode }}">#{{ tag }}</a>
+        {% endfor %}
+      </nav>
+    {% endif %}
+  </article>
+
+  {% if related_posts %}
+    <section class="news-related" aria-labelledby="relatedTitle">
+      <div class="news-section-heading">
+        <span>RELATED</span>
+        <h2 id="relatedTitle">관련 기사</h2>
+      </div>
+      <div class="news-related-grid">
+        {% for item in related_posts %}
+          <a href="/news/{{ item.slug }}">
+            <span>{{ item.category_label }}</span>
+            <strong>{{ item.title }}</strong>
+            <small>{{ item.created_display }}</small>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  <nav class="news-adjacent" aria-label="이전 다음 기사">
+    {% if previous_post %}
+      <a href="/news/{{ previous_post.slug }}">
+        <span>이전 기사</span>
+        <strong>{{ previous_post.title }}</strong>
+      </a>
+    {% endif %}
+    {% if next_post %}
+      <a href="/news/{{ next_post.slug }}">
+        <span>다음 기사</span>
+        <strong>{{ next_post.title }}</strong>
+      </a>
+    {% endif %}
+  </nav>
+
+  {% include "news/partials/comments.html" %}
+</main>
+
+<div class="news-toast" data-toast role="status" aria-live="polite"></div>
+{% endblock %}
