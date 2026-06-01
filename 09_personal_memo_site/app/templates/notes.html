@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · 개인 메모장{% endblock %}
+{% block content %}
+<section class="memo-app" data-user-role="{{ user.role }}">
+    <aside class="memo-sidebar">
+        <div class="section-heading">
+            <h1>{{ title }}</h1>
+            {% if user.role == "admin" %}
+                <p>관리자 계정이라 모든 사용자의 메모가 함께 표시됩니다.</p>
+            {% else %}
+                <p>{{ user.username }} 계정의 메모만 표시됩니다.</p>
+            {% endif %}
+        </div>
+
+        {% if error %}
+            <p class="alert">{{ error }}</p>
+        {% endif %}
+
+        <div class="toolbar-row">
+            <button class="button" id="newNoteButton" type="button">새 메모</button>
+            <button class="button button-light" id="installAppButton" type="button" hidden>앱 설치</button>
+        </div>
+
+        <label class="compact-field">
+            검색
+            <input id="searchInput" type="search" autocomplete="off" placeholder="제목, 내용, 태그, 폴더 검색">
+        </label>
+
+        <div class="folder-panel">
+            <div class="folder-heading">
+                <strong>폴더</strong>
+                <button class="text-button" id="renameFolderButton" type="button">이름 변경</button>
+                <button class="text-button" id="deleteFolderButton" type="button">삭제</button>
+            </div>
+            <div class="folder-list" id="folderList">
+                <button class="folder-item is-active" type="button" data-folder-id="">전체</button>
+                {% for folder in folders %}
+                    <button class="folder-item" type="button" data-folder-id="{{ folder.id }}">
+                        {{ folder.name }} <span>{{ folder.note_count }}</span>
+                    </button>
+                {% endfor %}
+            </div>
+            <form class="folder-create" id="folderCreateForm">
+                <input name="name" autocomplete="off" placeholder="새 폴더 이름">
+                <button class="button button-light" type="submit">추가</button>
+            </form>
+        </div>
+
+        <div class="toolbar-row">
+            <button class="button button-light" id="showTrashButton" type="button">휴지통</button>
+            <button class="button button-light" id="showActiveButton" type="button" hidden>메모 목록</button>
+        </div>
+
+        {% if user.role == "admin" %}
+            <div class="backup-panel">
+                <a class="button button-light" href="/admin/export">전체 백업</a>
+                <form id="importForm" action="/admin/import" method="post" enctype="multipart/form-data">
+                    <input name="backup_file" type="file" accept="application/json">
+                    <button class="button button-light" type="submit">가져오기</button>
+                </form>
+            </div>
+        {% endif %}
+    </aside>
+
+    <section class="memo-list-panel" aria-label="메모 목록">
+        <div class="note-list" id="noteList">
+            {% if notes %}
+                {% for note in notes %}
+                    <button class="note-card" type="button" data-note-id="{{ note.id }}">
+                        <strong>{{ note.title or note.body[:40] or "제목 없음" }}</strong>
+                        <p>{{ note.body }}</p>
+                        <span>{{ note.updated_at }}</span>
+                    </button>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <h2>아직 메모가 없습니다</h2>
+                    <p>새 메모를 눌러 작성하세요.</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="memo-detail" id="memoDetail" aria-label="메모 상세">
+        <div class="detail-empty" id="detailEmpty">
+            <h2>메모를 선택하세요</h2>
+            <p>목록에서 메모를 고르거나 새 메모를 만드세요.</p>
+        </div>
+
+        <form class="detail-editor" id="noteEditor" hidden>
+            <div class="detail-top">
+                <input id="noteTitle" name="title" maxlength="200" placeholder="제목">
+                <button class="button button-light" id="pinButton" type="button">고정</button>
+            </div>
+            <div class="save-control">
+                <div id="saveStatus" class="save-status">저장 완료</div>
+            </div>
+            <label>
+                폴더
+                <select id="noteFolder" name="folder_id">
+                    <option value="">폴더 없음</option>
+                    {% for folder in folders %}
+                        <option value="{{ folder.id }}">{{ folder.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                태그
+                <input id="noteTags" name="tags" maxlength="500" placeholder="쉼표로 구분">
+            </label>
+            <label>
+                내용
+                <textarea id="noteBody" name="body" rows="14" placeholder="메모 내용을 입력하세요."></textarea>
+            </label>
+
+            <div class="attachment-panel">
+                <div class="folder-heading">
+                    <strong>첨부</strong>
+                    <span class="hint">최대 5개, 파일당 10MB</span>
+                </div>
+                <input id="attachmentInput" type="file" multiple>
+                <p class="alert" id="attachmentError" hidden></p>
+                <div id="attachmentList" class="attachment-list"></div>
+            </div>
+
+            <div class="checklist-panel">
+                <div class="folder-heading">
+                    <strong>체크리스트</strong>
+                </div>
+                <div id="checklistItems" class="checklist-items"></div>
+                <div class="folder-create">
+                    <input id="checklistInput" autocomplete="off" placeholder="체크 항목">
+                    <button class="button button-light" id="addChecklistItemButton" type="button">추가</button>
+                </div>
+            </div>
+
+            <div class="detail-actions">
+                <button class="button button-light" id="historyButton" type="button">이력 보기</button>
+                <button class="button button-light" id="restoreButton" type="button" hidden>복원</button>
+                <button class="button button-danger" id="trashButton" type="button">휴지통</button>
+                <button class="button button-danger" id="purgeButton" type="button" hidden>영구삭제</button>
+            </div>
+
+            <div class="detail-save-footer">
+                <button class="button" id="manualSaveButton" type="button">저장</button>
+            </div>
+        </form>
+
+        <section class="history-panel" id="historyPanel" hidden>
+            <div class="folder-heading">
+                <strong>수정 이력</strong>
+                <button class="text-button" id="closeHistoryButton" type="button">닫기</button>
+            </div>
+            <div id="historyList"></div>
+        </section>
+    </section>
+</section>
+
+<div class="modal-backdrop" id="historyModal" hidden>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+        <div class="folder-heading">
+            <strong id="historyModalTitle">수정 전/후 비교</strong>
+            <button class="text-button" id="historyModalClose" type="button">닫기</button>
+        </div>
+        <div id="historyModalBody"></div>
+    </section>
+</div>
+
+<script id="memoBootstrap" type="application/json">{{ bootstrap_json|safe }}</script>
+<script src="/static/memo.js"></script>
+{% endblock %}

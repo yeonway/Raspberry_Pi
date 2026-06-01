@@ -9,6 +9,9 @@ local.properties
 *.db
 *.sqlite
 *.sqlite3
+*.gguf
+*.safetensors
+*.bin
 *.zip
 backup_*.zip
 *.sha256
@@ -19,10 +22,14 @@ ngrok.yml
 
 logs/
 backups/
+models/
+llama.cpp/
+.codex_tmp/
 __pycache__/
 .venv/
 .gradle/
 .kotlin/
+**/.cxx/
 build/
 app/build/
 world*/
@@ -43,6 +50,8 @@ paper.jar
 04_minecraft_server/world_the_end/
 04_minecraft_server/paper.jar
 04_minecraft_server/server.properties
+04_minecraft_server/plugins/*.jar
+!04_minecraft_server/plugins/README.txt
 
 05_raspberrypi_setup_test/logs/
 06_security_external_access/logs/

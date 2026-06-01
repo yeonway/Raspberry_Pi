@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}계정 관리 · 개인 메모장{% endblock %}
+{% block content %}
+<section class="admin-layout">
+    <div class="composer">
+        <div class="section-heading">
+            <h1>계정 관리</h1>
+            <p>관리자는 사용자를 만들고, 비밀번호와 권한을 변경하고, 계정을 삭제할 수 있습니다.</p>
+        </div>
+        {% if error %}
+            <p class="alert">{{ error }}</p>
+        {% endif %}
+        <form class="note-form" method="post" action="/admin/users">
+            <label>
+                새 아이디
+                <input name="username" value="{{ username or '' }}" autocomplete="off" required>
+            </label>
+            <label>
+                새 비밀번호
+                <input name="password" type="password" minlength="6" autocomplete="new-password" required>
+            </label>
+            <label>
+                권한
+                <select name="role">
+                    <option value="user" {% if role != "admin" %}selected{% endif %}>일반 사용자</option>
+                    <option value="admin" {% if role == "admin" %}selected{% endif %}>관리자</option>
+                </select>
+            </label>
+            <button class="button" type="submit">계정 만들기</button>
+        </form>
+    </div>
+
+    <div class="user-list" aria-label="계정 목록">
+        {% for account in users %}
+            <article class="user-card">
+                <header class="user-card-header">
+                    <div>
+                        <h2>{{ account.username }}</h2>
+                        <p>{{ account.created_at }} · 메모 {{ account.note_count }}개</p>
+                    </div>
+                    <span class="role-chip">{{ "관리자" if account.role == "admin" else "일반 사용자" }}</span>
+                </header>
+                <div class="account-actions">
+                    <form method="post" action="/admin/users/{{ account.id }}/role">
+                        <label>
+                            권한 변경
+                            <select name="role">
+                                <option value="user" {% if account.role == "user" %}selected{% endif %}>일반 사용자</option>
+                                <option value="admin" {% if account.role == "admin" %}selected{% endif %}>관리자</option>
+                            </select>
+                        </label>
+                        <button class="button button-light" type="submit">저장</button>
+                    </form>
+                    <form method="post" action="/admin/users/{{ account.id }}/password">
+                        <label>
+                            비밀번호 재설정
+                            <input name="password" type="password" minlength="6" autocomplete="new-password" required>
+                        </label>
+                        <button class="button button-light" type="submit">변경</button>
+                    </form>
+                    <form method="post" action="/admin/users/{{ account.id }}/delete">
+                        <button class="text-button" type="submit">계정 삭제</button>
+                    </form>
+                </div>
+            </article>
+        {% else %}
+            <div class="empty-state">
+                <h2>계정이 없습니다</h2>
+                <p>왼쪽에서 첫 계정을 만드세요.</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

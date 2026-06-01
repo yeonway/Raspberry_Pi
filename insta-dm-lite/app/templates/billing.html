@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}결제/토큰 - 댓글DM 라이트{% endblock %}
+
+{% block content %}
+<section class="dashboard-heading">
+    <p class="eyebrow">사용량</p>
+    <h1>결제/토큰</h1>
+    <p class="page-subtitle">자동 답글 또는 DM이 성공했을 때만 1건씩 차감됩니다.</p>
+</section>
+
+<section class="card-grid billing-summary" aria-label="토큰 잔액">
+    <article class="status-card">
+        <p>현재 플랜</p>
+        <strong>{{ balance.plan.name }}</strong>
+    </article>
+    <article class="status-card">
+        <p>월 제공 잔여</p>
+        <strong>{{ "{:,}".format(balance.monthly_remaining) }}건</strong>
+    </article>
+    <article class="status-card">
+        <p>구매 토큰 잔여</p>
+        <strong>{{ "{:,}".format(balance.purchased_remaining) }}건</strong>
+    </article>
+    <article class="status-card">
+        <p>이번 달</p>
+        <strong>{{ balance.current_period }}</strong>
+    </article>
+</section>
+
+<section class="notice muted-notice">
+    <strong>차감 순서</strong>
+    <p>월 제공 잔여량을 먼저 사용하고, 부족하면 구매 토큰을 사용합니다. 키워드가 맞지 않거나 중복 댓글이면 차감하지 않습니다.</p>
+</section>
+
+<section class="billing-section" aria-labelledby="current-plan-title">
+    <div class="section-heading">
+        <h2 id="current-plan-title">현재 플랜과 제공량</h2>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>플랜</th>
+                    <th>월 가격</th>
+                    <th>월 제공</th>
+                    <th>인스타 계정</th>
+                    <th>자동화</th>
+                    <th>추가 토큰</th>
+                    <th>CTA 버튼</th>
+                    <th>로그 보관</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for plan in plans %}
+                <tr class="{% if plan.code == balance.plan.code %}is-current{% endif %}">
+                    <td>{{ plan.name }}</td>
+                    <td>{{ "{:,}".format(plan.monthly_price_krw) }}원</td>
+                    <td>{{ "{:,}".format(plan.monthly_credits) }}건</td>
+                    <td>{{ plan.automation_account_limit }}개</td>
+                    <td>{{ plan.automation_rule_limit }}개</td>
+                    <td>{% if plan.allow_token_purchase %}가능{% else %}불가{% endif %}</td>
+                    <td>{% if plan.allow_cta_button %}가능{% else %}불가{% endif %}</td>
+                    <td>{{ plan.log_retention_days }}일</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="billing-section" aria-labelledby="token-products-title">
+    <div class="section-heading">
+        <h2 id="token-products-title">토큰팩</h2>
+    </div>
+    {% if not balance.plan.allow_token_purchase %}
+    <div class="notice muted-notice">
+        <strong>현재 플랜에서는 토큰팩 구매가 비활성화되어 있습니다.</strong>
+        <p>Basic 이상 플랜에서 추가 토큰을 구매할 수 있습니다.</p>
+    </div>
+    {% endif %}
+    <div class="product-list">
+        {% for product in token_products %}
+        <article class="product-row">
+            <div>
+                <h3>{{ product.name }}</h3>
+                <p>{{ "{:,}".format(product.price_krw) }}원</p>
+            </div>
+            <form method="post" action="/billing/checkout/{{ product.id }}" class="payment-checkout-form">
+                <button class="button" type="submit" {% if not balance.plan.allow_token_purchase %}disabled{% endif %}>토큰팩 구매</button>
+            </form>
+        </article>
+        {% endfor %}
+    </div>
+    <div id="payment-status" class="notice muted-notice" hidden></div>
+</section>
+
+<section class="billing-section" aria-labelledby="payment-orders-title">
+    <div class="section-heading">
+        <h2 id="payment-orders-title">결제 로그</h2>
+    </div>
+    <div class="product-list">
+        {% if orders %}
+            {% for order in orders %}
+            <article class="product-row">
+                <div>
+                    <h3>{{ order.product_name or "토큰팩" }}</h3>
+                    <p>{{ order.status_label }} · {{ "{:,}".format(order.amount_krw) }}원 · {{ "{:,}".format(order.token_amount) }}건</p>
+                    {% if order.failure_reason %}
+                    <p>{{ order.failure_reason }}</p>
+                    {% endif %}
+                </div>
+                <a class="button secondary-action link-button" href="/billing/orders/{{ order.id }}">주문 확인</a>
+            </article>
+            {% endfor %}
+        {% else %}
+            <article class="empty-state">
+                <strong>결제 로그가 없습니다.</strong>
+                <p>토큰팩을 선택하면 주문이 생성되고 여기에 표시됩니다.</p>
+            </article>
+        {% endif %}
+    </div>
+</section>
+<script src="https://cdn.portone.io/v2/browser-sdk.js" async defer></script>
+<script>
+document.querySelectorAll(".payment-checkout-form").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const statusBox = document.getElementById("payment-status");
+        const button = form.querySelector("button");
+        statusBox.hidden = false;
+        statusBox.textContent = "주문을 만들고 있습니다.";
+        button.disabled = true;
+
+        try {
+            const response = await fetch(form.action, { method: "POST" });
+            const checkout = await response.json();
+            if (!response.ok) {
+                throw new Error(checkout.detail || "주문을 만들지 못했습니다.");
+            }
+
+            const orderUrl = `/billing/orders/${checkout.order.id}`;
+            if (!window.PortOne || !checkout.payment_request.storeId || !checkout.payment_request.channelKey) {
+                statusBox.innerHTML = `주문이 생성되었습니다. 결제 설정을 확인한 뒤 다시 시도해주세요. <a href="${orderUrl}">주문 확인</a>`;
+                return;
+            }
+
+            const payment = await window.PortOne.requestPayment(checkout.payment_request);
+            if (payment && payment.code) {
+                statusBox.innerHTML = `결제가 완료되지 않았습니다. ${payment.message || ""} <a href="${orderUrl}">주문 확인</a>`;
+                return;
+            }
+
+            statusBox.innerHTML = `결제 요청이 끝났습니다. 서버 확인 후 토큰이 지급됩니다. <a href="${orderUrl}">주문 확인</a>`;
+        } catch (error) {
+            statusBox.textContent = error.message || "결제를 시작하지 못했습니다.";
+        } finally {
+            button.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

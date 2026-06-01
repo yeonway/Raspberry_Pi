@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}설정 - AI 뉴스 레이더{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>설정</h1>
+  <p>폰 AI, 수집기 상태, 수동 실행을 확인합니다.</p>
+</section>
+
+<section class="settings-grid">
+  <div class="settings-block">
+    <h2>Phone AI</h2>
+    <dl>
+      <dt>URL</dt><dd>{{ settings.phone_ai_base_url }}</dd>
+      <dt>활성</dt><dd>{{ settings.phone_ai_enabled }}</dd>
+      <dt>Timeout</dt><dd>{{ settings.phone_ai_timeout_seconds }}초</dd>
+    </dl>
+    <button data-action="phone-health">Health check</button>
+    <pre id="phone-health-result"></pre>
+  </div>
+  <div class="settings-block">
+    <h2>수집기</h2>
+    <dl>
+      <dt>GDELT</dt><dd>{{ settings.collector_gdelt_enabled }}</dd>
+      <dt>FRED</dt><dd>{{ settings.collector_fred_enabled }}</dd>
+      <dt>arXiv</dt><dd>{{ settings.collector_arxiv_enabled }}</dd>
+      <dt>Hacker News</dt><dd>{{ settings.collector_hn_enabled }}</dd>
+      <dt>SEC</dt><dd>{{ settings.collector_sec_enabled }}</dd>
+    </dl>
+  </div>
+  <div class="settings-block">
+    <h2>수동 실행</h2>
+    <div class="manual-actions">
+      <button data-action="collect">수동 수집</button>
+      <button data-action="score">AI scoring</button>
+      <button data-action="digest">Telegram digest</button>
+    </div>
+    <pre id="manual-result"></pre>
+  </div>
+</section>
+{% endblock %}

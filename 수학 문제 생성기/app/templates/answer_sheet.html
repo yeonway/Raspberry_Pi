@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ problem_set.title }} 정답지 · mathgen-web{% endblock %}
+
+{% block content %}
+  <section class="panel print-header">
+    <p class="eyebrow">Answer sheet</p>
+    <h1>{{ problem_set.title }} 정답지</h1>
+    <p>검증 상태와 해설은 생성 결과 기준으로 표시됩니다.</p>
+  </section>
+
+  <section class="problem-list print-list">
+    {% for problem in problems %}
+      <article class="problem-card print-card">
+        <div class="problem-meta">
+          <span>{{ problem.format_code }}</span>
+          <span>{{ problem.validation_status }}</span>
+        </div>
+        <h2>문제 {{ loop.index }}</h2>
+        <p>{{ problem.question_text }}</p>
+        <p><strong>정답:</strong> {{ problem.answer_text or "수동 검토 필요" }}</p>
+        {% if problem.explanation_text %}
+          <p><strong>해설:</strong> {{ problem.explanation_text }}</p>
+        {% endif %}
+        {% if problem.validation_message %}
+          <p class="warning-text">{{ problem.validation_message }}</p>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}

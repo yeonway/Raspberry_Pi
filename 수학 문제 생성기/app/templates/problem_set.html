@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ problem_set.title }} · mathgen-web{% endblock %}
+
+{% block content %}
+  <section class="page-title">
+    <div>
+      <p class="eyebrow">생성 결과</p>
+      <h1>{{ problem_set.title }}</h1>
+      <p>요청 {{ problem_set.requested_count }}문제 · {{ problem_set.generation_mode }}</p>
+    </div>
+    <span class="status-badge status-{{ problem_set.status }}">{{ problem_set.status }}</span>
+  </section>
+
+  <section class="panel action-panel">
+    <div class="action-group">
+      <form method="post" action="/problem-sets/{{ problem_set.id }}/validate" class="inline-form">
+        <button type="submit">검증 실행</button>
+      </form>
+      <form method="post" action="/problem-sets/{{ problem_set.id }}/render" class="inline-form">
+        <button type="submit" class="secondary-button">렌더링 실행</button>
+      </form>
+      <a class="text-button" href="/problem-sets/{{ problem_set.id }}/worksheet">문제지</a>
+      <a class="text-button" href="/problem-sets/{{ problem_set.id }}/answers">정답지</a>
+    </div>
+    <form method="post" action="/problem-sets/{{ problem_set.id }}/delete" onsubmit="return confirm('이 문제 세트를 삭제할까요?');">
+      <button type="submit" class="danger-button">삭제</button>
+    </form>
+  </section>
+
+  {% if generation_logs %}
+    <section class="panel log-panel">
+      <details>
+        <summary>생성 로그 {{ generation_logs|length }}개 보기</summary>
+        <div class="log-list">
+          {% for log in generation_logs %}
+            <article>
+              <div class="problem-meta">
+                <span>{{ log.provider }}</span>
+                <span>{{ log.model_name }}</span>
+                <span class="status-badge status-{{ log.status }}">{{ log.status }}</span>
+              </div>
+              {% if log.error_message %}
+                <p class="warning-text">{{ log.error_message }}</p>
+              {% else %}
+                <p>{{ log.created_at }}</p>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      </details>
+    </section>
+  {% endif %}
+
+  <section class="problem-list">
+    {% for problem in problems %}
+      <article class="problem-card">
+        <div class="problem-meta">
+          <span>{{ problem.format_code }}</span>
+          <span class="status-badge status-{{ problem.validation_status }}">{{ problem.validation_status }}</span>
+          <span>{{ problem.rendering_type }}</span>
+        </div>
+        <h2>문제 {{ loop.index }}</h2>
+        {% set asset = assets_by_problem.get(problem.id) %}
+        {% if asset and asset.status == "rendered" %}
+          <div class="rendered-asset">
+            {% if asset.file_path %}
+              <img src="/rendered/{{ asset.file_path }}" alt="rendered problem asset">
+            {% elif asset.content_html %}
+              {{ asset.content_html | safe }}
+            {% endif %}
+          </div>
+        {% elif asset and asset.status == "render_failed" %}
+          <p class="warning-text">{{ asset.message }}</p>
+        {% endif %}
+        <p>{{ problem.question_text }}</p>
+        {% if problem.answer_text %}
+          <details>
+            <summary>정답과 해설 보기</summary>
+            <p><strong>정답:</strong> {{ problem.answer_text }}</p>
+            <p>{{ problem.explanation_text }}</p>
+          </details>
+        {% endif %}
+        {% if problem.validation_message %}
+          <p class="warning-text">{{ problem.validation_message }}</p>
+        {% endif %}
+        {% if problem.validation_status in ["manual_review_required", "needs_review"] %}
+          <p class="warning-text">수동 검토 필요</p>
+        {% endif %}
+      </article>
+    {% else %}
+      <article class="empty-state">
+        <h2>저장된 문제가 없습니다.</h2>
+        <p>생성 조건이 비어 있거나 provider 호출이 실패하면 문제가 저장되지 않을 수 있습니다.</p>
+        <a class="text-button" href="/">다시 생성하기</a>
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}

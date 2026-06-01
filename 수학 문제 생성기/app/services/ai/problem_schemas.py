@@ -1,0 +1,32 @@
+PROBLEM_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "format_code": {"type": "string"},
+        "difficulty_level": {"type": "integer"},
+        "question_text": {"type": "string"},
+        "answer_text": {"type": "string"},
+        "explanation_text": {"type": "string"},
+        "input_schema": {"type": "object"},
+        "answer_schema": {"type": "object"},
+        "choices": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "correct_index": {"type": "integer"},
+        "rubric": {"type": "object"},
+        "rendering_type": {"type": "string"},
+        "rendering_payload": {"type": "object"},
+        "validation_method": {"type": "string"},
+        "auto_validation_candidate": {"type": "object"},
+    },
+    "required": [
+        "format_code",
+        "difficulty_level",
+        "question_text",
+        "answer_text",
+        "explanation_text",
+        "input_schema",
+        "answer_schema",
+        "validation_method",
+    ],
+}

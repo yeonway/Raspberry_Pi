@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Page 선택 - 댓글DM 라이트{% endblock %}
+
+{% block content %}
+<section class="dashboard-heading">
+    <p class="eyebrow">계정 연결</p>
+    <h1>사용할 Page 선택</h1>
+    <p class="page-subtitle">댓글 자동화를 적용할 Facebook Page를 선택합니다. 연결된 Instagram 비즈니스 계정이 있는 Page만 사용할 수 있습니다.</p>
+</section>
+
+{% if error %}
+<section class="notice error-notice">
+    <strong>확인 필요</strong>
+    <p>{{ error }}</p>
+</section>
+{% endif %}
+
+<section class="notice muted-notice">
+    <strong>자동화 계정 사용량</strong>
+    <p>{{ usage.used }} / {{ usage.limit }}개 사용 중입니다.</p>
+</section>
+
+<section class="billing-section" aria-labelledby="page-select-title">
+    <div class="section-heading">
+        <h2 id="page-select-title">연결 가능한 Page</h2>
+    </div>
+    <div class="product-list">
+        {% if pages %}
+            {% for page in pages %}
+            <article class="product-row">
+                <div>
+                    <h3>{{ page.page_name or "Facebook Page" }}</h3>
+                    {% if page.connectable %}
+                    <p>Instagram: {{ page.ig_username or page.ig_user_id }}</p>
+                    {% else %}
+                    <p>연결된 Instagram 비즈니스 계정이 없습니다.</p>
+                    {% endif %}
+                </div>
+                <form method="post" action="/connections/facebook/select">
+                    <input type="hidden" name="state" value="{{ state }}">
+                    <input type="hidden" name="page_id" value="{{ page.page_id }}">
+                    <button class="button" type="submit" {% if not page.connectable %}disabled{% endif %}>이 Page 연결</button>
+                </form>
+            </article>
+            {% endfor %}
+        {% else %}
+            <article class="empty-state">
+                <strong>선택할 Page가 없습니다.</strong>
+                <p>Facebook에서 관리 권한이 있는 Page와 연결된 Instagram 비즈니스 계정을 확인해주세요.</p>
+            </article>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

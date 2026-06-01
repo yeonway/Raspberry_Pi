@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}뉴스 - AI 뉴스 레이더{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>AI 뉴스 레이더</h1>
+    <p>무료 공개 데이터와 로컬 AI 점수로 관심 뉴스만 추려 봅니다.</p>
+  </div>
+  <div class="stats">
+    <div><strong>{{ stats.today_count or 0 }}</strong><span>오늘 수집</span></div>
+    <div><strong>{{ stats.high_count or 0 }}</strong><span>고점수</span></div>
+    <div><strong>{{ stats.last_collected_at or '-' }}</strong><span>마지막 수집</span></div>
+  </div>
+</section>
+
+<section class="filterbar" aria-label="뉴스 필터">
+  {% for name in filters %}
+    <a class="{% if active_filter == name %}active{% endif %}" href="/?filter={{ name }}">{{ name }}</a>
+  {% endfor %}
+</section>
+
+<section class="news-list">
+  {% if articles %}
+    {% for article in articles %}
+    <article class="news-card">
+      <div class="score-badge"><span>점수</span><strong>{{ article.final_score }}</strong></div>
+      <div class="news-main">
+        <h2>{{ article.title }}</h2>
+        <div class="meta">{{ article.source_name or '-' }} · {{ article.category or '-' }} · {{ article.published_at or article.collected_at }}</div>
+        <div class="chips">
+          {% for item in article.matched_keywords_list %}
+            <span>{{ item.keyword }}</span>
+          {% else %}
+            <span class="muted-chip">매칭 없음</span>
+          {% endfor %}
+        </div>
+        <p class="summary">{{ article.summary or article.snippet or '아직 요약이 없습니다.' }}</p>
+        <p class="reason">{{ article.score_reason or '로컬 키워드와 출처 기준으로 점수를 계산했습니다.' }}</p>
+        <div class="actions">
+          <a class="button primary" href="{{ article.url }}" target="_blank" rel="noopener noreferrer">원문 보기</a>
+          <a class="button" href="/articles/{{ article.id }}">상세 보기</a>
+        </div>
+      </div>
+      {% if article.image_url %}
+        <img class="thumb" src="{{ article.image_url }}" alt="">
+      {% else %}
+        <div class="thumb placeholder">{{ article.category or '뉴스' }}</div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <h2>아직 표시할 뉴스가 없습니다.</h2>
+      <p>설정 화면에서 수동 수집을 실행하거나 `python scripts/collect_once.py`를 사용하세요.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

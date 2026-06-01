@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}AI 뉴스 레이더{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">AI 뉴스 레이더</a>
+      <nav class="nav">
+        <a href="/">뉴스</a>
+        <a href="/keywords">키워드</a>
+        <a href="/sources">수집 로그</a>
+        <a href="/digests">텔레그램</a>
+        <a href="/settings">설정</a>
+      </nav>
+    </header>
+    <main class="page">
+      {% block content %}{% endblock %}
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}댓글 로그 - 댓글DM 라이트{% endblock %}
+
+{% block content %}
+<section class="dashboard-heading">
+    <p class="eyebrow">처리 결과</p>
+    <h1>댓글 로그</h1>
+    <p class="page-subtitle">자동화가 어떤 댓글을 처리했는지 확인합니다.</p>
+</section>
+
+<form class="filter-bar" method="get" action="/logs">
+    <label>
+        기간
+        <select name="period">
+            {% for period in period_options %}
+            <option value="{{ period.value }}" {% if filters.period == period.value %}selected{% endif %}>{{ period.label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        상태
+        <select name="status">
+            <option value="">전체</option>
+            {% for status in status_options %}
+            <option value="{{ status.value }}" {% if filters.status == status.value %}selected{% endif %}>{{ status.label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        자동화
+        <select name="rule_id">
+            <option value="">전체</option>
+            {% for rule in rules %}
+            <option value="{{ rule.id }}" {% if filters.rule_id == rule.id|string %}selected{% endif %}>{{ rule.name }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>
+        게시물
+        <input name="media_id" value="{{ filters.media_id }}" placeholder="게시물로 찾기">
+    </label>
+    <button class="button" type="submit">필터 적용</button>
+</form>
+
+<section class="log-list" aria-label="처리 로그 목록">
+    {% if logs %}
+        {% for log in logs %}
+        <article class="log-row">
+            <div>
+                <p class="status-pill">{{ log.status_label }}</p>
+                <h2>{{ log.rule_name or "규칙 없음" }}</h2>
+                <p>게시물 {{ log.display_media }} · 댓글 {{ log.display_comment }}</p>
+                <p>댓글 내용: {{ log.comment_text }}</p>
+                {% if log.matched_keyword %}
+                <p>매칭 키워드: {{ log.matched_keyword }}</p>
+                {% endif %}
+                <p>공개 답글: {{ log.public_reply_label }} · DM: {{ log.dm_label }}</p>
+                <p>차감: {% if log.charged %}{{ log.charge_amount }}건{% else %}없음{% endif %}</p>
+                {% if log.friendly_error %}
+                <p>안내: {{ log.friendly_error }}</p>
+                {% endif %}
+            </div>
+            <time>{{ log.created_at }}</time>
+        </article>
+        {% endfor %}
+    {% else %}
+        <article class="empty-state">
+            <strong>표시할 로그가 없습니다.</strong>
+            <p>수동 댓글 처리 테스트를 실행하면 결과가 여기에 표시됩니다.</p>
+        </article>
+    {% endif %}
+</section>
+{% endblock %}

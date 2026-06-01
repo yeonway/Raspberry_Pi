@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}수동 댓글 처리 - 댓글DM 라이트{% endblock %}
+
+{% block content %}
+<section class="dashboard-heading">
+    <p class="eyebrow">Debug</p>
+    <h1>수동 댓글 처리</h1>
+</section>
+
+{% if notice %}
+<section class="notice success-notice" role="status">
+    <strong>실행 완료</strong>
+    <p>{{ notice }}</p>
+</section>
+{% endif %}
+
+{% if error %}
+<section class="notice error-notice" role="alert">
+    <strong>실행 실패</strong>
+    <p>{{ error }}</p>
+</section>
+{% endif %}
+
+<section class="form-section">
+    <div class="step-heading">
+        <span>1</span>
+        <div>
+            <h2>댓글 입력</h2>
+            <p>Webhook 없이 comment_id, media_id, text를 직접 넣어 큐 처리 흐름을 테스트합니다.</p>
+        </div>
+    </div>
+    <form class="debug-form" method="post" action="/debug/process-comment">
+        <div class="form-grid">
+            <label>
+                comment_id
+                <input name="comment_id" value="{{ form.comment_id or '' }}" placeholder="comment_123">
+            </label>
+            <label>
+                media_id
+                <input name="media_id" value="{{ form.media_id or '' }}" placeholder="media_123">
+            </label>
+        </div>
+        <label>
+            댓글 내용
+            <textarea name="comment_text" rows="4" placeholder="가격 문의드립니다">{{ form.comment_text or '' }}</textarea>
+        </label>
+        <label class="inline-check">
+            <input type="checkbox" name="process_now" value="1">
+            테스트용으로 즉시 실행
+        </label>
+        <button class="button" type="submit">댓글 처리 테스트</button>
+    </form>
+</section>
+
+{% if result %}
+<section class="notice muted-notice">
+    <strong>큐 판정 결과</strong>
+    <p>상태: {{ result.status }}{% if result.rule_id %} · 규칙 ID: {{ result.rule_id }}{% endif %}{% if result.matched_keyword %} · 키워드: {{ result.matched_keyword }}{% endif %}</p>
+    {% if result.run_after %}<p>실행 예정: {{ result.run_after }}</p>{% endif %}
+</section>
+{% endif %}
+
+{% if processed %}
+<section class="notice muted-notice">
+    <strong>처리 결과</strong>
+    {% for item in processed %}
+    <p>작업 {{ item.job_id }} · {{ item.status }} · 공개 답글 {{ item.public_reply_status }} · DM {{ item.dm_status }} · 차감 {% if item.charged %}1건{% else %}없음{% endif %}</p>
+    {% endfor %}
+</section>
+{% endif %}
+
+<section class="form-section">
+    <div class="step-heading">
+        <span>2</span>
+        <div>
+            <h2>큐 실행</h2>
+            <p>실행 시간이 지난 queued 작업을 계정당 하나씩 처리합니다.</p>
+        </div>
+    </div>
+    <form method="post" action="/debug/run-queue">
+        <button class="button secondary-action" type="submit">대기 큐 처리</button>
+    </form>
+</section>
+
+<section class="job-list" aria-label="작업 큐">
+    <div class="section-heading">
+        <h2>최근 큐</h2>
+    </div>
+    {% if jobs %}
+        {% for job in jobs %}
+        <article class="job-row">
+            <div>
+                <p class="eyebrow">{{ job.status }}</p>
+                <h3>{{ job.rule_name }}</h3>
+                <p>댓글 {{ job.comment_id }} · 게시물 {{ job.media_id }}</p>
+                <p>실행 예정 {{ job.run_after }} · 시도 {{ job.attempt_count }}회</p>
+                {% if job.last_error %}<p>오류: {{ job.last_error }}</p>{% endif %}
+            </div>
+        </article>
+        {% endfor %}
+    {% else %}
+        <article class="empty-state">
+            <strong>큐 작업이 없습니다.</strong>
+            <p>댓글 처리 테스트를 실행하면 작업이 표시됩니다.</p>
+        </article>
+    {% endif %}
+</section>
+{% endblock %}

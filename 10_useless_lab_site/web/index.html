@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>쓸데없는 실험실</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar" aria-label="사이트 헤더">
+        <a class="brand" href="#reaction" aria-label="쓸데없는 실험실 홈">
+          <img src="assets/flask.svg" alt="" class="brand-icon">
+          <span>쓸데없는 실험실</span>
+        </a>
+        <nav class="quick-nav" aria-label="빠른 메뉴">
+          <button class="icon-button" type="button" data-action="show-records" title="기록 보기">
+            <span aria-hidden="true">▤</span>
+            <span>기록</span>
+          </button>
+          <button class="icon-button" type="button" data-action="random-game" title="아무 게임 열기">
+            <span aria-hidden="true">?</span>
+            <span>랜덤</span>
+          </button>
+          <button class="icon-button" type="button" data-action="reset-all" title="기록 초기화">
+            <span aria-hidden="true">↺</span>
+            <span>초기화</span>
+          </button>
+        </nav>
+      </header>
+
+      <main class="workspace">
+        <aside class="game-shelf" aria-label="게임 선반">
+          <h2>게임 선반</h2>
+          <div class="game-tabs" role="tablist" aria-label="미니게임 선택">
+            <button class="game-tab is-active" id="tab-reaction" type="button" role="tab" aria-selected="true" aria-controls="panel-reaction" data-game="reaction">
+              <span class="tab-index">01</span>
+              <span class="tab-icon">⏱</span>
+              <span>반응속도</span>
+            </button>
+            <button class="game-tab" id="tab-clicker" type="button" role="tab" aria-selected="false" aria-controls="panel-clicker" data-game="clicker">
+              <span class="tab-index">02</span>
+              <span class="tab-icon">☝</span>
+              <span>순간 클릭</span>
+            </button>
+            <button class="game-tab" id="tab-rps" type="button" role="tab" aria-selected="false" aria-controls="panel-rps" data-game="rps">
+              <span class="tab-index">03</span>
+              <span class="tab-icon">✌</span>
+              <span>가위바위보</span>
+            </button>
+            <button class="game-tab" id="tab-baseball" type="button" role="tab" aria-selected="false" aria-controls="panel-baseball" data-game="baseball">
+              <span class="tab-index">04</span>
+              <span class="tab-icon">⚾</span>
+              <span>숫자 야구</span>
+            </button>
+            <button class="game-tab" id="tab-doodle" type="button" role="tab" aria-selected="false" aria-controls="panel-doodle" data-game="doodle">
+              <span class="tab-index">05</span>
+              <span class="tab-icon">✎</span>
+              <span>낙서판</span>
+            </button>
+          </div>
+          <p class="sticky-note">심심할 때 하나씩 플레이 해보자!</p>
+        </aside>
+
+        <section class="play-paper" aria-live="polite">
+          <img src="assets/tape-blue.svg" alt="" class="tape tape-left">
+          <img src="assets/pencil.svg" alt="" class="pencil-prop">
+
+          <article class="game-panel is-active" id="panel-reaction" role="tabpanel" aria-labelledby="tab-reaction" data-panel="reaction">
+            <div class="panel-title">
+              <h1>반응속도</h1>
+              <p>초록색이 되면 바로 클릭</p>
+            </div>
+            <button class="reaction-pad" type="button" data-reaction-pad>시작을 누르면 대기</button>
+            <div class="stats-row">
+              <div>
+                <span class="stat-label">시간</span>
+                <strong data-reaction-time>0.000초</strong>
+              </div>
+              <div>
+                <span class="stat-label">최고 기록</span>
+                <strong data-reaction-best>없음</strong>
+              </div>
+              <div>
+                <span class="stat-label">현재 점수</span>
+                <strong data-reaction-count>0회</strong>
+              </div>
+            </div>
+            <button class="primary-button" type="button" data-reaction-start>
+              <span aria-hidden="true">▶</span>
+              시작
+            </button>
+          </article>
+
+          <article class="game-panel" id="panel-clicker" role="tabpanel" aria-labelledby="tab-clicker" data-panel="clicker" hidden>
+            <div class="panel-title">
+              <h1>순간 클릭</h1>
+              <p>10초 동안 손가락을 혹사시키기</p>
+            </div>
+            <button class="click-pad" type="button" data-click-pad>클릭</button>
+            <div class="stats-row">
+              <div>
+                <span class="stat-label">남은 시간</span>
+                <strong data-click-time>10.0초</strong>
+              </div>
+              <div>
+                <span class="stat-label">클릭 수</span>
+                <strong data-click-count>0회</strong>
+              </div>
+              <div>
+                <span class="stat-label">최고 기록</span>
+                <strong data-click-best>0회</strong>
+              </div>
+            </div>
+            <button class="primary-button" type="button" data-click-start>
+              <span aria-hidden="true">▶</span>
+              시작
+            </button>
+          </article>
+
+          <article class="game-panel" id="panel-rps" role="tabpanel" aria-labelledby="tab-rps" data-panel="rps" hidden>
+            <div class="panel-title">
+              <h1>가위바위보</h1>
+              <p>운빨로 컴퓨터를 이겨보기</p>
+            </div>
+            <div class="choice-row" aria-label="가위바위보 선택">
+              <button class="choice-button" type="button" data-rps="가위">✌<span>가위</span></button>
+              <button class="choice-button" type="button" data-rps="바위">✊<span>바위</span></button>
+              <button class="choice-button" type="button" data-rps="보">✋<span>보</span></button>
+            </div>
+            <div class="result-board" data-rps-result>아무거나 눌러서 시작</div>
+            <div class="stats-row">
+              <div>
+                <span class="stat-label">승</span>
+                <strong data-rps-win>0</strong>
+              </div>
+              <div>
+                <span class="stat-label">무</span>
+                <strong data-rps-draw>0</strong>
+              </div>
+              <div>
+                <span class="stat-label">패</span>
+                <strong data-rps-lose>0</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="game-panel" id="panel-baseball" role="tabpanel" aria-labelledby="tab-baseball" data-panel="baseball" hidden>
+            <div class="panel-title">
+              <h1>숫자 야구</h1>
+              <p>서로 다른 3자리 숫자 맞히기</p>
+            </div>
+            <form class="guess-form" data-baseball-form>
+              <label for="guess-input">예상 숫자</label>
+              <input id="guess-input" name="guess" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="123">
+              <button class="primary-button" type="submit">확인</button>
+            </form>
+            <div class="result-board" data-baseball-message>중복 없는 숫자 3개를 입력해봐.</div>
+            <ol class="guess-list" data-guess-list></ol>
+            <button class="secondary-button" type="button" data-baseball-reset>새 문제</button>
+          </article>
+
+          <article class="game-panel" id="panel-doodle" role="tabpanel" aria-labelledby="tab-doodle" data-panel="doodle" hidden>
+            <div class="panel-title">
+              <h1>낙서판</h1>
+              <p>수업 노트 구석에 그리던 그 느낌</p>
+            </div>
+            <div class="doodle-tools" aria-label="낙서 도구">
+              <button class="swatch is-active" type="button" data-color="#111111" style="--swatch:#111111" aria-label="검정"></button>
+              <button class="swatch" type="button" data-color="#0b66d8" style="--swatch:#0b66d8" aria-label="파랑"></button>
+              <button class="swatch" type="button" data-color="#d82727" style="--swatch:#d82727" aria-label="빨강"></button>
+              <button class="swatch" type="button" data-color="#218a3b" style="--swatch:#218a3b" aria-label="초록"></button>
+              <label class="size-control">굵기 <input type="range" min="2" max="16" value="5" data-brush-size></label>
+              <button class="secondary-button" type="button" data-doodle-clear>지우기</button>
+            </div>
+            <canvas class="doodle-canvas" width="760" height="360" data-doodle-canvas aria-label="낙서 캔버스"></canvas>
+          </article>
+        </section>
+
+        <aside class="record-board" aria-label="기록과 메모">
+          <section>
+            <h2>오늘의 쓸데없는 기록</h2>
+            <ol class="record-list" data-record-list></ol>
+          </section>
+          <section class="memo-paper">
+            <img src="assets/tape-yellow.svg" alt="" class="memo-tape">
+            <h2>수업 중 만든 것들</h2>
+            <ul class="memo-list">
+              <li><span>이상한 계산기</span><time>05.07</time></li>
+              <li><span>자동 낙서기</span><time>05.09</time></li>
+              <li><span>운세 뽑기 기계</span><time>05.13</time></li>
+              <li><span>자리 바꾸기 추첨기</span><time>05.15</time></li>
+              <li><span>집중력 테스트</span><time>05.16</time></li>
+            </ul>
+            <button class="secondary-button full-button" type="button" data-action="add-memo">＋ 새 메모 추가</button>
+          </section>
+          <img src="assets/crumpled-note.svg" alt="" class="crumpled-note">
+        </aside>
+      </main>
+
+      <footer class="bottom-note">오류나 아이디어 제보는 설정 &gt; 의견 보내기에서! :)</footer>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

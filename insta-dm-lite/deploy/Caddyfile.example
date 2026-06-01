@@ -1,0 +1,19 @@
+# Replace instadm.dcout.site with the production domain.
+# Caddy obtains and renews HTTPS certificates automatically.
+instadm.dcout.site {
+    encode zstd gzip
+
+    reverse_proxy 127.0.0.1:8015
+
+    log {
+        output file /var/log/caddy/insta-dm-lite.access.log {
+            roll_size 10mb
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format console
+    }
+}
+
+# Do not replace or remove unrelated existing hosts such as dcout.site,
+# files.dcout.site, or files.sexyminup.site when merging this block.

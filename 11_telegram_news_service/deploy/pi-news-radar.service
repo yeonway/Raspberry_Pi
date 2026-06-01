@@ -1,0 +1,16 @@
+[Unit]
+Description=pi-news-radar FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=user
+Group=user
+WorkingDirectory=/home/user/pi-news-radar
+EnvironmentFile=/etc/pi-news-radar/pi-news-radar.env
+ExecStart=/home/user/pi-news-radar/.venv/bin/uvicorn app.main:app --host ${APP_HOST} --port ${APP_PORT}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

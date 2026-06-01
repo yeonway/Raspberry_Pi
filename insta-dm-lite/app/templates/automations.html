@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}자동화 - 댓글DM 라이트{% endblock %}
+
+{% block content %}
+<section class="dashboard-heading split-heading">
+    <div>
+        <p class="eyebrow">자동 응답</p>
+        <h1>자동화 목록</h1>
+        <p class="page-subtitle">켜져 있는 자동화가 댓글을 확인하고 답글과 DM을 보냅니다.</p>
+    </div>
+    <a class="button" href="/automations/new">새 자동화 만들기</a>
+</section>
+
+<section class="rule-list" aria-label="자동화 목록">
+    {% if rules %}
+        {% for rule in rules %}
+        <article class="rule-row">
+            <div>
+                <p class="status-pill {% if rule.enabled %}status-on{% else %}status-off{% endif %}">
+                    {% if rule.enabled %}켜짐{% else %}꺼짐{% endif %}
+                </p>
+                <h2>{{ rule.name }}</h2>
+                <p>
+                    {% if rule.target_mode == "all" %}
+                    모든 게시물에 적용
+                    {% else %}
+                    선택한 게시물 {{ rule.media_target_count }}개에 적용
+                    {% endif %}
+                    · {% if rule.match_mode == "contains" %}댓글에 키워드가 들어가면 실행{% else %}댓글이 키워드와 같을 때만 실행{% endif %}
+                </p>
+                <p>키워드: {{ ", ".join(rule.keywords) }}</p>
+                {% if rule.exclude_keywords %}
+                <p>제외 키워드: {{ ", ".join(rule.exclude_keywords) }}</p>
+                {% endif %}
+                <p>공개 답글: {{ rule.public_reply_text }}</p>
+                <p>DM: {{ rule.dm_text }}</p>
+                {% if rule.cta_label and rule.cta_url %}
+                <p>버튼: {{ rule.cta_label }}</p>
+                {% endif %}
+            </div>
+            <form method="post" action="/automations/{{ rule.id }}/toggle">
+                {% if rule.enabled %}
+                <input type="hidden" name="enabled" value="0">
+                <button class="button secondary-action" type="submit">끄기</button>
+                {% else %}
+                <input type="hidden" name="enabled" value="1">
+                <button class="button" type="submit">켜기</button>
+                {% endif %}
+            </form>
+        </article>
+        {% endfor %}
+    {% else %}
+        <article class="empty-state">
+            <strong>등록된 자동화가 없습니다.</strong>
+            <p>게시물, 키워드, 답글, DM 문구만 입력하면 첫 자동화를 만들 수 있습니다.</p>
+            <a class="button" href="/automations/new">새 자동화 만들기</a>
+        </article>
+    {% endif %}
+</section>
+{% endblock %}

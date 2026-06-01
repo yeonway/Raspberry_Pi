@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}키워드 - AI 뉴스 레이더{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>키워드 관리</h1>
+  <p>매칭 점수와 텔레그램 후보 여부를 조정합니다.</p>
+</section>
+
+<form class="keyword-form" method="post" action="/keywords">
+  <input name="keyword" placeholder="키워드" required>
+  <input name="group_name" placeholder="그룹" required>
+  <input name="weight" type="number" min="0" max="100" value="10">
+  <label><input name="alert_enabled" type="checkbox" checked> 알림 후보</label>
+  <label><input name="enabled" type="checkbox" checked> 활성</label>
+  <button type="submit">추가/수정</button>
+</form>
+
+<section class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>키워드</th>
+        <th>그룹</th>
+        <th>가중치</th>
+        <th>알림</th>
+        <th>활성</th>
+        <th>작업</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in keywords %}
+      <tr>
+        <td>{{ row.keyword }}</td>
+        <td>{{ row.group_name }}</td>
+        <td>{{ row.weight }}</td>
+        <td>{{ '예' if row.alert_enabled else '아니오' }}</td>
+        <td>{{ '예' if row.enabled else '아니오' }}</td>
+        <td class="inline-actions">
+          <form method="post" action="/keywords/{{ row.id }}/toggle"><input type="hidden" name="field" value="alert_enabled"><button>알림 전환</button></form>
+          <form method="post" action="/keywords/{{ row.id }}/toggle"><input type="hidden" name="field" value="enabled"><button>활성 전환</button></form>
+          <form method="post" action="/keywords/{{ row.id }}/delete"><button class="danger">삭제</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

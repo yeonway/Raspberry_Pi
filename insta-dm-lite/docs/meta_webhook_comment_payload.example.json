@@ -1,0 +1,21 @@
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "IG_USER_ID_FROM_ENV",
+      "time": 1770000000,
+      "changes": [
+        {
+          "field": "comments",
+          "value": {
+            "id": "COMMENT_ID_FROM_META",
+            "text": "가격 문의드립니다",
+            "media": {
+              "id": "MEDIA_ID_FROM_META"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

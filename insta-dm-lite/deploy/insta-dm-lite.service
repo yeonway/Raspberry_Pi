@@ -1,0 +1,26 @@
+[Unit]
+Description=insta-dm-lite FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=instadm
+Group=instadm
+WorkingDirectory=/opt/insta-dm-lite
+EnvironmentFile=/etc/insta-dm-lite/insta-dm-lite.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/insta-dm-lite/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8015 --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=5
+RuntimeDirectory=insta-dm-lite
+StateDirectory=insta-dm-lite
+LogsDirectory=insta-dm-lite
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/insta-dm-lite/data /var/log/insta-dm-lite
+
+[Install]
+WantedBy=multi-user.target

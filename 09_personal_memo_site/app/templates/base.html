@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#2f6f73">
+    <title>{% block title %}개인 메모장{% endblock %}</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+    <script src="/static/theme.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/notes" aria-label="개인 메모장 홈">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span>개인 메모장</span>
+        </a>
+        <nav class="nav">
+            <div class="theme-picker" aria-label="화면 테마 선택">
+                <button class="theme-choice" type="button" data-theme-choice="light" aria-pressed="false">화이트</button>
+                <button class="theme-choice" type="button" data-theme-choice="dark" aria-pressed="false">다크</button>
+            </div>
+            {% if user %}
+                <span class="user-chip">{{ user.username }}{% if user.role == "admin" %} · 관리자{% endif %}</span>
+                {% if user.role == "admin" %}
+                    <a class="nav-link" href="/admin/users">계정 관리</a>
+                {% endif %}
+                <form method="post" action="/logout">
+                    <button class="button button-light" type="submit">로그아웃</button>
+                </form>
+            {% else %}
+                <a href="/login">로그인</a>
+                <a href="/register">가입</a>
+            {% endif %}
+        </nav>
+    </header>
+    <main class="shell">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

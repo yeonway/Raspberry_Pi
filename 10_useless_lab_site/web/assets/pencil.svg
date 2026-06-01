@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 220" role="img" aria-label="연필">
+  <g transform="rotate(-23 40 110)">
+    <path d="M26 38h28v126H26z" fill="#f7d24b" stroke="#111" stroke-width="4"/>
+    <path d="M26 38h28v18H26z" fill="#f08f3a" stroke="#111" stroke-width="4"/>
+    <path d="M26 164h28l-14 38-14-38Z" fill="#f4d5a8" stroke="#111" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M35 188h10l-5 14-5-14Z" fill="#111"/>
+    <path d="M31 26h18c5 0 9 4 9 9v3H22v-3c0-5 4-9 9-9Z" fill="#e8e8e8" stroke="#111" stroke-width="4"/>
+    <path d="M36 62v94" stroke="#fff4b0" stroke-width="4"/>
+  </g>
+</svg>

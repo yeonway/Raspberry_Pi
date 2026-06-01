@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}{{ problem_set.title }} 문제지 · mathgen-web{% endblock %}
+
+{% block content %}
+  <section class="panel print-header">
+    <p class="eyebrow">Worksheet</p>
+    <h1>{{ problem_set.title }} 문제지</h1>
+    <p>이름: ____________________ 날짜: ____________________</p>
+  </section>
+
+  <section class="problem-list print-list">
+    {% for problem in problems %}
+      <article class="problem-card print-card">
+        <div class="problem-meta no-print">
+          <span>{{ problem.format_code }}</span>
+          <span>{{ problem.validation_status }}</span>
+          <span>{{ problem.rendering_type }}</span>
+        </div>
+        <h2>문제 {{ loop.index }}</h2>
+        {% set asset = assets_by_problem.get(problem.id) %}
+        {% if asset and asset.status == "rendered" %}
+          <div class="rendered-asset">
+            {% if asset.file_path %}
+              <img src="/rendered/{{ asset.file_path }}" alt="rendered problem asset">
+            {% elif asset.content_html %}
+              {{ asset.content_html | safe }}
+            {% endif %}
+          </div>
+        {% endif %}
+        <p>{{ problem.question_text }}</p>
+        <div class="answer-space"></div>
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}

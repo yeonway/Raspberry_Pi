@@ -1,0 +1,17 @@
+[Unit]
+Description=mathgen-web FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mathgen
+Group=mathgen
+WorkingDirectory=/opt/mathgen
+EnvironmentFile=/etc/mathgen/mathgen.env
+ExecStart=/opt/mathgen/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8020
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

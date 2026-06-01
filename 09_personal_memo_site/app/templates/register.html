@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}가입 · 개인 메모장{% endblock %}
+{% block content %}
+<section class="auth-card">
+    <div>
+        <h1>가입</h1>
+        <p>가입한 사용자는 본인이 작성한 메모만 볼 수 있습니다.</p>
+    </div>
+    {% if error %}
+        <p class="alert">{{ error }}</p>
+    {% endif %}
+    <form class="form" method="post" action="/register">
+        <label>
+            아이디
+            <input name="username" autocomplete="username" value="{{ username or '' }}" required autofocus>
+        </label>
+        <label>
+            비밀번호
+            <input name="password" type="password" autocomplete="new-password" minlength="6" required>
+        </label>
+        <button class="button" type="submit">가입하고 시작</button>
+    </form>
+    <p class="switch-link">이미 계정이 있으면 <a href="/login">로그인</a></p>
+</section>
+{% endblock %}

@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+
+{% block title %}mathgen-web{% endblock %}
+
+{% block content %}
+  <section class="page-title">
+    <div>
+      <p class="eyebrow">중학교 수학 MVP</p>
+      <h1>문제 생성</h1>
+      <p>
+        단원 메타데이터와 허용 문제 형식만 사용해 새 문제를 생성합니다.
+        실제 교과서 본문과 문항은 저장하거나 복사하지 않습니다.
+      </p>
+    </div>
+    <a class="text-button" href="/problem-sets">생성 이력 보기</a>
+  </section>
+
+  <section class="workspace-grid">
+    <form class="panel generator-form" method="post" action="/generate">
+      <div class="form-section">
+        <div class="section-heading">
+          <h2>기본 조건</h2>
+          <p>과목, 단원, 난이도, 문제 수를 정합니다.</p>
+        </div>
+        <div class="form-grid compact">
+          <label>
+            <span>학년</span>
+            <select name="grade_label" id="grade-select">
+              <option value="중1" selected>중1</option>
+              <option value="중2">중2</option>
+              <option value="중3">중3</option>
+            </select>
+          </label>
+
+          <label>
+            <span>학기</span>
+            <select name="semester_label" id="semester-select">
+              <option value="1학기" selected>1학기</option>
+              <option value="2학기">2학기</option>
+            </select>
+          </label>
+
+          <label>
+            <span>과목</span>
+            <select name="subject_id">
+              {% for subject in subjects %}
+                <option value="{{ subject.id }}">{{ subject.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            <span>단원</span>
+            <select name="unit_id" id="unit-select">
+              {% for unit in units %}
+                {% set meta = unit_metadata.get(unit.id, {}) %}
+                <option
+                  value="{{ unit.id }}"
+                  data-grade="{{ unit.grade_label }}"
+                  data-semester="{{ meta.get('semester_label', '') }}"
+                  {% if unit.id == default_unit_id %}selected{% endif %}
+                >
+                  {{ unit.grade_label }} {{ meta.get('semester_label', '') }} · {{ unit.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            <span>교과서 메타데이터</span>
+            <select name="textbook_id">
+              <option value="">공통 단원 기준</option>
+              {% for textbook in textbooks %}
+                <option value="{{ textbook.id }}">
+                  {{ textbook.grade_label }} · {{ textbook.publisher }} · {{ textbook.title }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            <span>난이도</span>
+            <select name="difficulty_level">
+              <option value="1">1 - 기초</option>
+              <option value="2">2 - 쉬움</option>
+              <option value="3" selected>3 - 보통</option>
+              <option value="4">4 - 어려움</option>
+              <option value="5">5 - 심화</option>
+            </select>
+          </label>
+
+          <label>
+            <span>문제 수</span>
+            <input type="number" name="requested_count" min="1" max="10" value="5">
+          </label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-heading">
+          <h2>생성 방식</h2>
+          <p>직접 선택, 랜덤, 혼합 랜덤, 자연어 요청 기반 중 하나를 고릅니다.</p>
+        </div>
+        <div class="mode-row" role="group" aria-label="생성 방식">
+          <label>
+            <input type="radio" name="generation_mode" value="selected" checked>
+            <span>직접 선택</span>
+          </label>
+          <label>
+            <input type="radio" name="generation_mode" value="random">
+            <span>랜덤</span>
+          </label>
+          <label>
+            <input type="radio" name="generation_mode" value="mixed_random">
+            <span>혼합 랜덤</span>
+          </label>
+          <label>
+            <input type="radio" name="generation_mode" value="instruction_guided">
+            <span>요청 우선</span>
+          </label>
+        </div>
+
+        <fieldset class="format-fieldset">
+          <legend>문제 형식</legend>
+          <p class="field-help">직접 선택 모드에서는 하나 이상 선택해야 합니다.</p>
+          <div class="format-list">
+            {% for problem_format in problem_formats %}
+              {% if problem_format.code != "mixed" %}
+                <label class="check-row">
+                  <input
+                    type="checkbox"
+                    name="selected_format_codes"
+                    value="{{ problem_format.code }}"
+                    {% if problem_format.code == default_format_code %}checked{% endif %}
+                  >
+                  <span>{{ problem_format.name }}</span>
+                </label>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <fieldset class="format-fieldset" id="mixed-random-fields" hidden>
+          <legend>혼합 랜덤 비율</legend>
+          <p class="field-help">0보다 큰 비율만 반영됩니다.</p>
+          <div class="weight-grid">
+            {% for problem_format in problem_formats %}
+              {% if problem_format.code != "mixed" %}
+                <label>
+                  <span>{{ problem_format.name }}</span>
+                  <input type="number" name="format_weights[{{ problem_format.code }}]" min="0" max="100" step="1" value="0">
+                </label>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="form-section">
+        <div class="section-heading">
+          <h2>추가 설정</h2>
+          <p>제목, seed, 해설 스타일, 자연어 요청을 지정합니다.</p>
+        </div>
+        <div class="form-grid compact">
+          <label>
+            <span>문제 세트 제목</span>
+            <input type="text" name="title" maxlength="200" placeholder="비워두면 단원명으로 자동 생성">
+          </label>
+
+          <label>
+            <span>랜덤 seed</span>
+            <input type="number" name="random_seed" placeholder="비워두면 매번 달라짐">
+          </label>
+
+          <label>
+            <span>해설 스타일</span>
+            <select name="explanation_style">
+              <option value="short">짧게</option>
+              <option value="normal" selected>보통</option>
+              <option value="detailed">자세히</option>
+            </select>
+          </label>
+
+          <label class="check-row bare-check">
+            <input type="checkbox" name="include_answers" checked>
+            <span>정답 포함</span>
+          </label>
+        </div>
+
+        <label class="full-width">
+          <span>사용자 요청</span>
+          <textarea
+            name="generation_instruction"
+            rows="4"
+            placeholder="예: 표를 보고 그래프를 그린 뒤 기울기를 구하는 문제로 만들어줘"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="secondary-button" id="preview-plan-button">계획 미리보기</button>
+        <button type="submit">문제 생성</button>
+      </div>
+    </form>
+
+    <aside class="panel preview-panel">
+      <div class="section-heading">
+        <h2>생성 계획</h2>
+        <p>Gemini 호출 전에 문제 형식 배치를 확인합니다.</p>
+      </div>
+      <div id="plan-preview" class="plan-preview empty">
+        <p>계획 미리보기를 누르면 슬롯별 형식과 검증 방식을 표시합니다.</p>
+      </div>
+    </aside>
+  </section>
+
+  <script>
+    const form = document.querySelector(".generator-form");
+    const mixedFields = document.querySelector("#mixed-random-fields");
+    const selectedChecks = [...document.querySelectorAll("input[name='selected_format_codes']")];
+    const modeInputs = [...document.querySelectorAll("input[name='generation_mode']")];
+    const gradeSelect = document.querySelector("#grade-select");
+    const semesterSelect = document.querySelector("#semester-select");
+    const unitSelect = document.querySelector("#unit-select");
+    const previewButton = document.querySelector("#preview-plan-button");
+    const preview = document.querySelector("#plan-preview");
+
+    function currentMode() {
+      return modeInputs.find((item) => item.checked)?.value || "selected";
+    }
+
+    function syncMixedFields() {
+      mixedFields.hidden = currentMode() !== "mixed_random";
+    }
+
+    function syncUnits() {
+      const grade = gradeSelect.value;
+      const semester = semesterSelect.value;
+      let firstVisible = null;
+      [...unitSelect.options].forEach((option) => {
+        const visible = option.dataset.grade === grade && option.dataset.semester === semester;
+        option.hidden = !visible;
+        option.disabled = !visible;
+        if (visible && firstVisible === null) {
+          firstVisible = option;
+        }
+      });
+      if (unitSelect.selectedOptions[0]?.disabled && firstVisible) {
+        unitSelect.value = firstVisible.value;
+      }
+    }
+
+    function buildPayload() {
+      const data = new FormData(form);
+      const weights = {};
+      for (const [key, value] of data.entries()) {
+        if (key.startsWith("format_weights[")) {
+          const code = key.replace("format_weights[", "").replace("]", "");
+          weights[code] = Number(value || 0);
+        }
+      }
+      return {
+        subject_id: Number(data.get("subject_id")),
+        textbook_id: data.get("textbook_id") ? Number(data.get("textbook_id")) : null,
+        unit_id: Number(data.get("unit_id")),
+        difficulty_level: Number(data.get("difficulty_level")),
+        requested_count: Number(data.get("requested_count")),
+        generation_mode: currentMode(),
+        selected_format_codes: data.getAll("selected_format_codes"),
+        format_weights: weights,
+        generation_instruction: String(data.get("generation_instruction") || ""),
+        random_seed: data.get("random_seed") ? Number(data.get("random_seed")) : null,
+        explanation_style: String(data.get("explanation_style") || "normal"),
+        include_answers: data.get("include_answers") === "on",
+        title: data.get("title") ? String(data.get("title")) : null
+      };
+    }
+
+    async function previewPlan() {
+      preview.className = "plan-preview loading";
+      preview.innerHTML = "<p>계획을 계산하는 중입니다.</p>";
+      const response = await fetch("/api/generation/plan", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(buildPayload())
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        preview.className = "plan-preview error";
+        preview.innerHTML = `<p>${data.detail || "계획 생성에 실패했습니다."}</p>`;
+        return;
+      }
+      const warnings = (data.warnings || []).map((item) => `<li>${item}</li>`).join("");
+      const rows = (data.problem_slots || []).map((slot) => `
+        <li>
+          <strong>${slot.slot_index}. ${slot.format_code}</strong>
+          <span>${slot.validation_method} · ${slot.rendering_type}</span>
+        </li>
+      `).join("");
+      preview.className = "plan-preview";
+      preview.innerHTML = `
+        ${warnings ? `<ul class="warning-list">${warnings}</ul>` : ""}
+        ${rows ? `<ol class="slot-list">${rows}</ol>` : "<p>생성 가능한 슬롯이 없습니다.</p>"}
+      `;
+    }
+
+    modeInputs.forEach((input) => input.addEventListener("change", syncMixedFields));
+    gradeSelect.addEventListener("change", syncUnits);
+    semesterSelect.addEventListener("change", syncUnits);
+    previewButton.addEventListener("click", previewPlan);
+    form.addEventListener("submit", (event) => {
+      if (currentMode() === "selected" && !selectedChecks.some((item) => item.checked)) {
+        event.preventDefault();
+        selectedChecks[0]?.focus();
+        alert("직접 선택 모드에서는 문제 형식을 하나 이상 선택해야 합니다.");
+      }
+    });
+    syncMixedFields();
+    syncUnits();
+  </script>
+{% endblock %}

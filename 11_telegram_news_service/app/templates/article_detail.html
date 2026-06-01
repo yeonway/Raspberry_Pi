@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}기사 상세 - AI 뉴스 레이더{% endblock %}
+{% block content %}
+<section class="detail">
+  <a class="backlink" href="/">← 목록으로</a>
+  <h1>{{ article.title }}</h1>
+  <div class="meta">{{ article.source_name }} · {{ article.category }} · 발행 {{ article.published_at or '-' }} · 수집 {{ article.collected_at }}</div>
+  <div class="detail-grid">
+    <div>
+      <h2>요약</h2>
+      <p>{{ article.summary or '요약 없음' }}</p>
+      <h2>점수 이유</h2>
+      <p>{{ article.score_reason or '로컬 키워드와 출처 기준' }}</p>
+      <h2>원문 스니펫</h2>
+      <p>{{ article.snippet or '-' }}</p>
+      <a class="button primary" href="{{ article.url }}" target="_blank" rel="noopener noreferrer">원문 보기</a>
+    </div>
+    <aside class="metrics">
+      <div><span>최종 점수</span><strong>{{ article.final_score }}</strong></div>
+      <div><span>로컬 점수</span><strong>{{ article.local_keyword_score }}</strong></div>
+      <div><span>AI 점수</span><strong>{{ article.ai_score or '-' }}</strong></div>
+      <div><span>상태</span><strong>{{ article.status }}</strong></div>
+      <h2>매칭 키워드</h2>
+      <div class="chips stacked">
+        {% for item in article.matched_keywords_list %}
+          <span>{{ item.keyword }} · {{ item.group_name }} · {{ item.weight }}</span>
+        {% else %}
+          <span class="muted-chip">없음</span>
+        {% endfor %}
+      </div>
+      <h2>태그</h2>
+      <div class="chips stacked">
+        {% for tag in article.tags_list %}
+          <span>{{ tag }}</span>
+        {% else %}
+          <span class="muted-chip">없음</span>
+        {% endfor %}
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - 댓글DM 라이트{% endblock %}
+
+{% block content %}
+<section class="dashboard-heading">
+    <p class="eyebrow">오늘 상태</p>
+    <h1>대시보드</h1>
+    <p class="page-subtitle">자동화, 토큰, 처리 결과를 한눈에 확인합니다.</p>
+</section>
+
+<section class="card-grid" aria-label="서비스 상태">
+    {% for card in cards %}
+    <article class="status-card {% if card.tone %}{{ card.tone }}-card{% endif %}">
+        <p>{{ card.label }}</p>
+        <strong>{{ card.value }}</strong>
+        {% if card.hint %}<span>{{ card.hint }}</span>{% endif %}
+    </article>
+    {% endfor %}
+</section>
+
+<section class="quick-actions" aria-label="빠른 이동">
+    <a class="button" href="/automations/new">새 자동화 만들기</a>
+    <a class="button secondary-action link-button" href="/logs">댓글 로그 보기</a>
+    <a class="button secondary-action link-button" href="/connections">인스타 연결 확인</a>
+</section>
+
+{% if warning_count %}
+<section class="notice error-notice" role="status">
+    <strong>확인이 필요한 댓글이 있습니다.</strong>
+    <p>댓글 로그에서 권한 오류, 토큰 부족, 제한 대기 상태를 확인해 주세요.</p>
+</section>
+{% endif %}
+{% endblock %}

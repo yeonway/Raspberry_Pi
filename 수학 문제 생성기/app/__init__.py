@@ -1,0 +1,1 @@
+"""mathgen-web FastAPI package."""

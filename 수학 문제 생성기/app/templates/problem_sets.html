@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}생성 이력 · mathgen-web{% endblock %}
+
+{% block content %}
+  <section class="page-title">
+    <div>
+      <p class="eyebrow">문제 세트</p>
+      <h1>생성 이력</h1>
+      <p>생성 결과를 필터링하고, 실패하거나 불필요한 세트를 정리합니다.</p>
+    </div>
+    <a class="text-button" href="/">새 문제 생성</a>
+  </section>
+
+  <section class="panel filter-panel">
+    <form method="get" action="/problem-sets" class="filter-form">
+      <label>
+        <span>상태</span>
+        <select name="status">
+          <option value="">전체</option>
+          {% for item in ["generated", "partially_failed", "failed", "generating", "planned"] %}
+            <option value="{{ item }}" {% if status_filter == item %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span>학기</span>
+        <select name="semester_label">
+          <option value="">전체</option>
+          <option value="1학기" {% if semester_filter == "1학기" %}selected{% endif %}>1학기</option>
+          <option value="2학기" {% if semester_filter == "2학기" %}selected{% endif %}>2학기</option>
+        </select>
+      </label>
+      <label>
+        <span>단원</span>
+        <select name="unit_id">
+          <option value="">전체</option>
+          {% for unit in units %}
+            <option value="{{ unit.id }}" {% if unit_filter == unit.id %}selected{% endif %}>
+              {{ unit.grade_label }} · {{ unit.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="secondary-button">필터 적용</button>
+    </form>
+  </section>
+
+  <section class="problem-list">
+    {% for problem_set in problem_sets %}
+      <article class="problem-card list-card">
+        <div>
+          <div class="problem-meta">
+            <span class="status-badge status-{{ problem_set.status }}">{{ problem_set.status }}</span>
+            <span>{{ problem_set.generation_mode }}</span>
+            <span>{{ problem_set.requested_count }}문제</span>
+          </div>
+          <h2><a href="/problem-sets/{{ problem_set.id }}">{{ problem_set.title }}</a></h2>
+          <p>{{ problem_set.created_at }}</p>
+        </div>
+        <form method="post" action="/problem-sets/{{ problem_set.id }}/delete" onsubmit="return confirm('이 문제 세트를 삭제할까요?');">
+          <button type="submit" class="danger-button">삭제</button>
+        </form>
+      </article>
+    {% else %}
+      <article class="empty-state">
+        <h2>조건에 맞는 문제 세트가 없습니다.</h2>
+        <p>필터를 바꾸거나 새 문제 세트를 생성하세요.</p>
+        <a class="text-button" href="/">문제 생성하기</a>
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}

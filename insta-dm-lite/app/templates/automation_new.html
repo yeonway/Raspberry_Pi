@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}새 자동화 - 댓글DM 라이트{% endblock %}
+
+{% block content %}
+<section class="dashboard-heading">
+    <p class="eyebrow">3분 설정</p>
+    <h1>새 자동화 만들기</h1>
+    <p class="page-subtitle">게시물, 키워드, 답글, DM만 정하세요.</p>
+</section>
+
+{% if error %}
+<section class="notice error-notice" role="alert">
+    <strong>저장 실패</strong>
+    <p>{{ error }}</p>
+</section>
+{% endif %}
+
+{% if media_error %}
+<section class="notice muted-notice">
+    <strong>게시물 조회 안내</strong>
+    <p>{{ media_error }}</p>
+</section>
+{% endif %}
+
+<form class="automation-form" method="post" action="/automations/new">
+    <section class="form-section">
+        <div class="step-heading">
+            <span>1</span>
+            <div>
+                <h2>게시물 선택</h2>
+                <p>모든 게시물 또는 선택 게시물에 적용합니다.</p>
+            </div>
+        </div>
+        <div class="segmented">
+            <label>
+                <input type="radio" name="target_mode" value="all" {% if form.target_mode != "selected" %}checked{% endif %}>
+                모든 게시물
+            </label>
+            <label>
+                <input type="radio" name="target_mode" value="selected" {% if form.target_mode == "selected" %}checked{% endif %}>
+                선택한 게시물만
+            </label>
+        </div>
+        <div class="media-card-grid">
+            {% if media_items %}
+                {% for item in media_items %}
+                {% set image_url = item.thumbnail_url or item.media_url or "" %}
+                <label class="media-select-card">
+                    <input type="checkbox" name="selected_media" value="{{ item.id }}">
+                    <input type="hidden" name="media_meta" value='{{ {
+                        "media_id": item.id,
+                        "media_caption": item.caption or "",
+                        "media_permalink": item.permalink or "",
+                        "media_type": item.media_type or "",
+                        "thumbnail_url": image_url
+                    } | tojson }}'>
+                    {% if image_url %}
+                    <img src="{{ image_url }}" alt="">
+                    {% endif %}
+                    <strong>{{ item.caption or "캡션 없음" }}</strong>
+                    <span>{{ item.timestamp or "" }}</span>
+                    {% if item.permalink %}
+                    <small>원본 게시물 연결됨</small>
+                    {% endif %}
+                </label>
+                {% endfor %}
+            {% else %}
+                <article class="empty-state">
+            <strong>표시할 게시물이 없습니다.</strong>
+            <p>목록이 없어도 모든 게시물 자동화는 저장할 수 있습니다.</p>
+                </article>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="form-section">
+        <div class="step-heading">
+            <span>2</span>
+            <div>
+                <h2>키워드 입력</h2>
+                <p>고객 댓글에 들어오면 자동으로 답할 말을 입력합니다.</p>
+            </div>
+        </div>
+        <div class="form-grid">
+            <label>
+                자동화 이름
+                <input name="name" value="{{ form.name or '' }}" placeholder="예: 가격 문의 답변">
+            </label>
+            <label>
+                댓글 확인 방식
+                <select name="match_mode">
+                    <option value="contains" {% if form.match_mode != "exact" %}selected{% endif %}>댓글에 키워드가 들어가면</option>
+                    <option value="exact" {% if form.match_mode == "exact" %}selected{% endif %}>댓글이 키워드와 같을 때만</option>
+                </select>
+            </label>
+        </div>
+        <div class="form-grid">
+            <label>
+                키워드
+                <textarea name="keywords" rows="4" placeholder="가격&#10;구매&#10;링크">{{ form.keywords or '' }}</textarea>
+            </label>
+            <label>
+                제외 키워드
+                <textarea name="exclude_keywords" rows="4" placeholder="품절&#10;취소">{{ form.exclude_keywords or '' }}</textarea>
+                <small>이 말이 들어간 댓글은 자동화하지 않습니다.</small>
+            </label>
+        </div>
+    </section>
+
+    <section class="form-section">
+        <div class="step-heading">
+            <span>3</span>
+            <div>
+                <h2>공개 답글 입력</h2>
+                <p>고객 댓글 아래에 공개로 남길 짧은 안내 문구입니다.</p>
+            </div>
+        </div>
+        <label>
+            공개 답글
+            <textarea name="public_reply_text" rows="3">{{ form.public_reply_text or 'DM으로 보내드렸습니다. 확인해주세요.' }}</textarea>
+        </label>
+    </section>
+
+    <section class="form-section">
+        <div class="step-heading">
+            <span>4</span>
+            <div>
+                <h2>DM/버튼 입력</h2>
+                <p>고객에게 보낼 DM 문구와 선택 버튼을 입력합니다.</p>
+            </div>
+        </div>
+        <label>
+            DM 문구
+            <textarea name="dm_text" rows="4">{{ form.dm_text or '안녕하세요. 요청하신 정보를 보내드립니다.' }}</textarea>
+        </label>
+        {% if not can_use_cta %}
+        <div class="notice muted-notice">
+            <strong>현재 플랜에서는 CTA 버튼을 사용할 수 없습니다.</strong>
+            <p>Basic 이상 플랜에서 버튼 이름과 링크를 추가할 수 있습니다.</p>
+        </div>
+        {% endif %}
+        <div class="form-grid">
+            <label>
+                버튼 이름
+                <input name="cta_label" value="{{ form.cta_label or '' }}" placeholder="자세히 보기" {% if not can_use_cta %}disabled{% endif %}>
+            </label>
+            <label>
+                버튼 링크
+                <input name="cta_url" value="{{ form.cta_url or '' }}" placeholder="https://example.com" {% if not can_use_cta %}disabled{% endif %}>
+            </label>
+        </div>
+        <input name="delay_min_seconds" type="hidden" value="{{ form.delay_min_seconds or '5' }}">
+        <input name="delay_max_seconds" type="hidden" value="{{ form.delay_max_seconds or '30' }}">
+    </section>
+
+    <section class="form-section">
+        <div class="step-heading">
+            <span>5</span>
+            <div>
+                <h2>확인 후 저장</h2>
+                <p>저장하면 자동화가 바로 켜집니다. 필요하면 목록에서 언제든 끌 수 있습니다.</p>
+            </div>
+        </div>
+        <div class="preview-box">
+            <strong>저장 전 확인</strong>
+            <p>1. 적용할 게시물을 확인해 주세요.</p>
+            <p>2. 키워드와 제외 키워드를 확인해 주세요.</p>
+            <p>3. 공개 답글과 DM 문구가 고객에게 보여도 괜찮은지 확인해 주세요.</p>
+        </div>
+        <button class="button" type="submit">저장하고 켜기</button>
+    </section>
+</form>
+{% endblock %}
