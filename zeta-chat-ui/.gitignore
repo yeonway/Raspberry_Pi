@@ -1,0 +1,47 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+
+# Runtime data and local tool state
+data/
+.agents/
+.codex/
+.codex-*/
+.deploy-backups/
+*.bak
+*.backup
+*.tgz
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials*.json
+service-account*.json
+
+# Build and cache output
+.next/
+dist/
+build/
+out/
+coverage/
+.cache/
+tmp/
+temp/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc

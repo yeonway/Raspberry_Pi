@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --zeta-bg: 8 8 10;
+  --zeta-panel: 15 15 18;
+  --zeta-panel2: 31 31 35;
+  --zeta-line: 39 39 44;
+  --zeta-text: 240 240 245;
+  --zeta-muted: 176 176 186;
+  --zeta-soft: 125 125 136;
+  --zeta-accent: 109 45 246;
+  --zeta-accent-soft: 45 28 82;
+  --zeta-user-bubble: 109 45 246;
+  --zeta-user-bubble-text: 255 255 255;
+  --zeta-assistant-bubble: 31 31 35;
+  --zeta-assistant-bubble-text: 240 240 245;
+  --zeta-button-text: 255 255 255;
+  --zeta-font-family: "Segoe UI", Pretendard, ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
+  --zeta-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+  --zeta-glow: 0 0 0 3px rgba(109, 45, 246, 0.24);
+  background: rgb(var(--zeta-bg));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: rgb(var(--zeta-bg));
+}
+
+@media (max-width: 767px) {
+  .zeta-mobile-shell {
+    background: #151515;
+  }
+
+  .zeta-message-scroll {
+    background: #171717;
+  }
+
+  .zeta-message-scroll > div {
+    max-width: 470px;
+  }
+
+  .zeta-message-scroll .group {
+    gap: 7px;
+  }
+
+  .zeta-message-scroll .group > button > * {
+    width: 27px;
+    height: 27px;
+  }
+
+  .zeta-message-scroll .group > div {
+    max-width: calc(100% - 34px);
+  }
+
+  .zeta-assistant-message {
+    border: 0;
+    background: transparent;
+    padding: 0 1px;
+    border-radius: 0;
+    color: #d4d4d8;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .zeta-message-scroll .group:has(.zeta-assistant-message) {
+    align-items: flex-start;
+  }
+
+  .zeta-message-scroll .group:has(.zeta-assistant-message) > div > div:last-child {
+    display: none;
+  }
+
+  .zeta-message-scroll .group:has(.bg-zeta-userBubble) > div > div:first-child {
+    border-radius: 16px 16px 4px 16px;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .zeta-input-shell {
+    background: #171717;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .zeta-composer-tools {
+    max-width: 470px;
+  }
+}
+
+body {
+  margin: 0;
+  color: rgb(var(--zeta-text));
+  font-family: var(--zeta-font-family);
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgb(var(--zeta-accent) / 0.18);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.75) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.75);
+  border-radius: 999px;
+}
+
+@layer components {
+  .input {
+    @apply h-11 w-full min-w-0 max-w-full rounded-lg border border-zeta-line bg-zeta-panel px-3 text-sm text-zeta-text outline-none transition placeholder:text-zeta-soft focus:border-zeta-accent;
+  }
+
+  .textarea {
+    @apply w-full min-w-0 max-w-full resize-y rounded-lg border border-zeta-line bg-zeta-panel px-3 py-2 text-sm leading-6 text-zeta-text outline-none transition placeholder:text-zeta-soft focus:border-zeta-accent;
+  }
+
+  .admin-page .input {
+    @apply h-10 text-xs sm:h-11 sm:text-sm;
+  }
+
+  .admin-page .textarea {
+    @apply px-2.5 py-1.5 text-xs leading-5 sm:px-3 sm:py-2 sm:text-sm sm:leading-6;
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "zeta",
+  "short_name": "zeta",
+  "description": "AI character chat",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/zeta-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/zeta-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/zeta-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "\ucc44\ud305 \uc5f4\uae30",
+      "short_name": "\ucc44\ud305",
+      "url": "/",
+      "icons": [{ "src": "/icons/zeta-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "\uc571 \uc124\uce58",
+      "short_name": "\uc124\uce58",
+      "url": "/pwa",
+      "icons": [{ "src": "/icons/zeta-icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
