@@ -1,0 +1,969 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Sparkles, X } from "lucide-react";
+import { sendMessage } from "@/lib/chat-api";
+import {
+  characters as fallbackCharacters,
+  chatRooms as fallbackRooms,
+} from "@/lib/mock-data";
+import {
+  DEFAULT_RESPONSE_STYLE,
+} from "@/lib/response-formats";
+import type {
+  AccountChatState,
+  AuthUser,
+  BotConfig,
+  Character,
+  ChatRoom,
+  MemoryItem,
+  Message,
+  ResponseStyle,
+} from "@/types/chat";
+import { AccountSettingsDialog } from "./AccountSettingsDialog";
+import { ChatHeader } from "./ChatHeader";
+import { ChatInput } from "./ChatInput";
+import { ChatSidebar } from "./ChatSidebar";
+import { CustomPromptDialog } from "./CustomPromptDialog";
+import { MessageList } from "./MessageList";
+import { MobileNav } from "./MobileNav";
+
+type MobilePanel = "rooms" | null;
+
+const ADMIN_VISIBLE_ACCOUNT_NAME = "yeonnu";
+
+function createId(prefix: string) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}`;
+}
+
+function nowLabel() {
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date());
+}
+
+function createRoom(character: Character): ChatRoom {
+  return {
+    id: createId("room"),
+    characterId: character.id,
+    title: `${character.name} 대화`,
+    lastMessage: character.firstScene,
+    lastMessageAt: "방금",
+    messages: [
+      {
+        id: createId("message"),
+        role: "assistant",
+        content: character.firstScene,
+        createdAt: nowLabel(),
+      },
+    ],
+  };
+}
+
+function getCharacterForRoom(room: ChatRoom, allCharacters: Character[]) {
+  return allCharacters.find((character) => character.id === room.characterId);
+}
+
+function ensureOpeningMessage(room: ChatRoom, character: Character): ChatRoom {
+  if (room.messages.length > 0) {
+    return room;
+  }
+
+  const openingMessage: Message = {
+    id: createId("message"),
+    role: "assistant",
+    content: character.firstScene,
+    createdAt: nowLabel(),
+  };
+
+  return {
+    ...room,
+    lastMessage: room.lastMessage || character.firstScene,
+    lastMessageAt: room.lastMessageAt || openingMessage.createdAt,
+    messages: [openingMessage],
+  };
+}
+
+function withRoomMessages(
+  room: ChatRoom,
+  messages: Message[],
+  lastMessage?: string,
+): ChatRoom {
+  return {
+    ...room,
+    messages,
+    lastMessage: lastMessage ?? messages.at(-1)?.content ?? room.lastMessage,
+    lastMessageAt: nowLabel(),
+  };
+}
+
+function createMessageDisplayQueue({
+  onToken,
+  signal,
+}: {
+  onToken: (token: string) => void;
+  signal: AbortSignal;
+}) {
+  let displayedContent = "";
+
+  return {
+    push(token: string) {
+      if (!token || signal.aborted) {
+        return;
+      }
+
+      displayedContent += token;
+      onToken(token);
+    },
+    finish() {
+      return Promise.resolve(displayedContent);
+    },
+    cancel() {
+      return displayedContent;
+    },
+    getDisplayedContent() {
+      return displayedContent;
+    },
+  };
+}
+
+function isStoppedGeneration(signal: AbortSignal) {
+  return signal.aborted;
+}
+
+function normalizeRoomsForCharacters(
+  currentRooms: ChatRoom[],
+  allCharacters: Character[],
+  defaultCharacterId?: string,
+) {
+  const availableRooms = currentRooms.flatMap((room) => {
+    const character = getCharacterForRoom(room, allCharacters);
+    return character ? [ensureOpeningMessage(room, character)] : [];
+  });
+
+  if (availableRooms.length > 0) {
+    return availableRooms;
+  }
+
+  const defaultCharacter =
+    allCharacters.find((character) => character.id === defaultCharacterId) ??
+    allCharacters[0];
+
+  return defaultCharacter ? [createRoom(defaultCharacter)] : [];
+}
+
+export function ChatLayout({
+  initialUser,
+  initialAccountState,
+  initialCharacterId,
+}: {
+  initialUser: AuthUser;
+  initialAccountState?: AccountChatState;
+  initialCharacterId?: string;
+}) {
+  const router = useRouter();
+  const [characters, setCharacters] = useState<Character[]>(fallbackCharacters);
+  const [rooms, setRooms] = useState<ChatRoom[]>(() =>
+    normalizeRoomsForCharacters(fallbackRooms, fallbackCharacters),
+  );
+  const [selectedRoomId, setSelectedRoomId] = useState(fallbackRooms[0].id);
+  const [isSending, setIsSending] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null);
+  const [isCustomPromptOpen, setIsCustomPromptOpen] = useState(false);
+  const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
+  const [customPromptDraft, setCustomPromptDraft] = useState("");
+  const [customPromptAppendDraft, setCustomPromptAppendDraft] = useState("");
+  const [sessionId] = useState(() => {
+    if (typeof window === "undefined") {
+      return createId("session");
+    }
+
+    const saved = window.localStorage.getItem("zeta-session-id");
+    if (saved) {
+      return saved;
+    }
+
+    const nextSessionId = createId("session");
+    window.localStorage.setItem("zeta-session-id", nextSessionId);
+    return nextSessionId;
+  });
+  const [currentUser, setCurrentUser] = useState<AuthUser>(initialUser);
+  const [memories, setMemories] = useState<MemoryItem[]>(
+    initialAccountState?.memories ?? [],
+  );
+  const [responseStyle] = useState<ResponseStyle>(DEFAULT_RESPONSE_STYLE);
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const persistRoom = useCallback(
+    (room: ChatRoom) => {
+      const savedRoom: ChatRoom = {
+        ...room,
+        messages: room.messages.map((message) => ({
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          createdAt: message.createdAt,
+        })),
+      };
+
+      void fetch("/api/account/rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ room: savedRoom }),
+      }).catch(() => undefined);
+    },
+    [],
+  );
+
+  const deletePersistedRoom = useCallback(
+    (roomId: string) => {
+      void fetch(`/api/account/rooms?roomId=${encodeURIComponent(roomId)}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+    },
+    [],
+  );
+
+  const replaceRoom = useCallback((nextRoom: ChatRoom) => {
+    setRooms((currentRooms) =>
+      currentRooms.map((room) => (room.id === nextRoom.id ? nextRoom : room)),
+    );
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadChatbots() {
+      const response = await fetch("/api/chatbots", { cache: "no-store" });
+      if (!response.ok) {
+        return;
+      }
+
+      const config = (await response.json()) as BotConfig;
+      if (cancelled || !config.characters?.length) {
+        return;
+      }
+
+      setCharacters(config.characters);
+      setRooms((currentRooms) => {
+        return normalizeRoomsForCharacters(
+          currentRooms,
+          config.characters,
+          config.defaultCharacterId,
+        );
+      });
+    }
+
+    loadChatbots().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!initialCharacterId || characters === fallbackCharacters) return;
+    const targetChar = characters.find((c) => c.id === initialCharacterId);
+    if (!targetChar) return;
+    const existingRoom = rooms.find(
+      (r) => r.characterId === initialCharacterId && !r.archivedAt,
+    );
+    if (existingRoom) {
+      setSelectedRoomId(existingRoom.id);
+      return;
+    }
+    const newRoom = createRoom(targetChar);
+    setRooms((prev) => [newRoom, ...prev]);
+    setSelectedRoomId(newRoom.id);
+    persistRoom(newRoom);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCharacterId, characters !== fallbackCharacters]);
+
+  const selectedRoom = useMemo(
+    () => rooms.find((room) => room.id === selectedRoomId) ?? rooms[0],
+    [rooms, selectedRoomId],
+  );
+
+  const selectedCharacter =
+    characters.find(
+      (character) => character.id === selectedRoom?.characterId,
+    ) ?? characters[0];
+
+  useEffect(() => {
+    if (rooms.length > 0 && !rooms.some((room) => room.id === selectedRoomId)) {
+      setSelectedRoomId(rooms[0].id);
+    }
+  }, [rooms, selectedRoomId]);
+
+  useEffect(() => {
+    if (!selectedRoom && characters[0]) {
+      const room = createRoom(characters[0]);
+      setRooms([room]);
+      setSelectedRoomId(room.id);
+      return;
+    }
+
+    if (
+      selectedRoom &&
+      !characters.some((item) => item.id === selectedRoom.characterId)
+    ) {
+      const room = createRoom(characters[0]);
+      setRooms((currentRooms) => [room, ...currentRooms]);
+      setSelectedRoomId(room.id);
+      return;
+    }
+
+    if (
+      selectedRoom &&
+      selectedCharacter &&
+      selectedRoom.messages.length === 0
+    ) {
+      setRooms((currentRooms) =>
+        currentRooms.map((room) =>
+          room.id === selectedRoom.id
+            ? ensureOpeningMessage(room, selectedCharacter)
+            : room,
+        ),
+      );
+    }
+  }, [characters, selectedCharacter, selectedRoom]);
+
+  const updateRoomMessages = (
+    roomId: string,
+    updater: (messages: Message[]) => Message[],
+    lastMessage?: string,
+  ) => {
+    setRooms((currentRooms) =>
+      currentRooms.map((room) => {
+        if (room.id !== roomId) {
+          return room;
+        }
+
+        const messages = updater(room.messages);
+        return {
+          ...room,
+          messages,
+          lastMessage:
+            lastMessage ?? messages.at(-1)?.content ?? room.lastMessage,
+          lastMessageAt: nowLabel(),
+        };
+      }),
+    );
+  };
+
+  const appendStreamingToken = (
+    roomId: string,
+    messageId: string,
+    token: string,
+  ) => {
+    if (!token) {
+      return;
+    }
+
+    updateRoomMessages(roomId, (messages) =>
+      messages.map((message) =>
+        message.id === messageId
+          ? { ...message, content: `${message.content}${token}` }
+          : message,
+      ),
+    );
+  };
+
+  const generateAssistantReply = async ({
+    assistantCreatedAt,
+    assistantMessageId,
+    character,
+    content,
+    messages,
+    room,
+    turnAction,
+  }: {
+    assistantCreatedAt: string;
+    assistantMessageId: string;
+    character: Character;
+    content: string;
+    messages: Message[];
+    room: ChatRoom;
+    turnAction?: "message" | "skip";
+  }) => {
+    setIsSending(true);
+    const abortController = new AbortController();
+    const displayQueue = createMessageDisplayQueue({
+      signal: abortController.signal,
+      onToken: (token) => {
+        appendStreamingToken(room.id, assistantMessageId, token);
+      },
+    });
+    abortControllerRef.current = abortController;
+
+    try {
+      const result = await sendMessage({
+        chatId: room.id,
+        sessionId,
+        chatTitle: room.title,
+        character,
+        customCharacterPrompt: room.customCharacterPrompt,
+        messages,
+        content,
+        responseStyle,
+        turnAction,
+        signal: abortController.signal,
+        onToken: (token) => {
+          displayQueue.push(token);
+        },
+      });
+      await displayQueue.finish();
+
+      updateRoomMessages(room.id, (currentMessages) =>
+        currentMessages.map((msg) =>
+          msg.id === assistantMessageId
+            ? { id: assistantMessageId, role: "assistant" as const, content: result.content, createdAt: assistantCreatedAt }
+            : msg,
+        ),
+        result.content,
+      );
+
+      persistRoom({
+        ...room,
+        messages: [...messages, { id: assistantMessageId, role: "assistant" as const, content: result.content, createdAt: assistantCreatedAt }],
+        lastMessage: result.content,
+        lastMessageAt: nowLabel(),
+      });
+
+      if (result.memoryItem) {
+        setMemories((currentMemories) => [
+          result.memoryItem!,
+          ...currentMemories,
+        ]);
+      }
+    } catch (error) {
+      const displayedContent = displayQueue.cancel();
+      if (isStoppedGeneration(abortController.signal)) {
+        if (displayedContent.trim()) {
+          updateRoomMessages(room.id, (currentMessages) =>
+            currentMessages.map((msg) =>
+              msg.id === assistantMessageId
+                ? {
+                    ...msg,
+                    content: displayedContent,
+                  }
+                : msg,
+            ),
+            displayedContent,
+          );
+          persistRoom({
+            ...room,
+            messages: [...messages, { id: assistantMessageId, role: "assistant" as const, content: displayedContent, createdAt: assistantCreatedAt }],
+            lastMessage: displayedContent,
+            lastMessageAt: nowLabel(),
+          });
+        } else {
+          updateRoomMessages(room.id, (currentMessages) =>
+            currentMessages.filter((msg) => msg.id !== assistantMessageId),
+          );
+          persistRoom({
+            ...room,
+            messages,
+            lastMessage: room.lastMessage,
+            lastMessageAt: room.lastMessageAt,
+          });
+        }
+        return;
+      }
+
+      const errorText =
+        error instanceof Error
+          ? error.message
+          : "Chat response generation failed.";
+      const contentPrefix = displayedContent.trim()
+        ? `${displayedContent}\n\n`
+        : "";
+      const failedContent = `${contentPrefix}Response generation failed. Please retry. ${errorText}`;
+      updateRoomMessages(room.id, (currentMessages) =>
+        currentMessages.map((msg) =>
+          msg.id === assistantMessageId
+            ? { ...msg, content: failedContent }
+            : msg,
+        ),
+        failedContent,
+      );
+      persistRoom({
+        ...room,
+        messages: [...messages, { id: assistantMessageId, role: "assistant" as const, content: failedContent, createdAt: assistantCreatedAt }],
+        lastMessage: failedContent,
+        lastMessageAt: nowLabel(),
+      });
+    } finally {
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
+      setIsSending(false);
+    }
+  };
+
+  const handleAbortGeneration = () => {
+    abortControllerRef.current?.abort();
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    router.push("/");
+  };
+
+  const handleSelectRoom = (roomId: string) => {
+    setSelectedRoomId(roomId);
+    setMobilePanel(null);
+  };
+
+  const handleNewChat = (characterId = selectedCharacter?.id) => {
+    if (!characterId) {
+      return;
+    }
+
+    const character =
+      characters.find((item) => item.id === characterId) ?? selectedCharacter;
+    if (!character) {
+      return;
+    }
+
+    const newRoom = createRoom(character);
+
+    setRooms((currentRooms) => [newRoom, ...currentRooms]);
+    setSelectedRoomId(newRoom.id);
+    persistRoom(newRoom);
+    setMobilePanel(null);
+  };
+
+  const handleRestoreRoom = (roomId: string) => {
+    const room = rooms.find((item) => item.id === roomId);
+    if (!room) {
+      return;
+    }
+
+    const restoredRoom: ChatRoom = {
+      ...room,
+      archivedAt: undefined,
+      lastMessageAt: nowLabel(),
+    };
+    setRooms((currentRooms) =>
+      currentRooms.map((item) => (item.id === roomId ? restoredRoom : item)),
+    );
+    setSelectedRoomId(roomId);
+    persistRoom(restoredRoom);
+  };
+
+  const handleDeleteRoom = (roomId: string) => {
+    let nextRooms = rooms.filter((room) => room.id !== roomId);
+    let nextSelectedRoomId = selectedRoomId;
+
+    if (selectedRoomId === roomId) {
+      const nextActiveRoom = nextRooms.find((room) => !room.archivedAt);
+      const nextRoom = nextActiveRoom ?? nextRooms[0];
+
+      if (nextRoom) {
+        nextSelectedRoomId = nextRoom.id;
+      } else if (selectedCharacter) {
+        const newRoom = createRoom(selectedCharacter);
+        nextRooms = [newRoom];
+        nextSelectedRoomId = newRoom.id;
+        persistRoom(newRoom);
+      }
+    }
+
+    setRooms(nextRooms);
+    setSelectedRoomId(nextSelectedRoomId);
+    deletePersistedRoom(roomId);
+    setMobilePanel(null);
+  };
+
+  const handleSend = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed || isSending || !selectedRoom || !selectedCharacter) {
+      return;
+    }
+
+    const userMessage: Message = {
+      id: createId("message"),
+      role: "user",
+      content: trimmed,
+      createdAt: nowLabel(),
+    };
+
+    const nextMessages = [...selectedRoom.messages, userMessage];
+    const roomAfterUserMessage = withRoomMessages(
+      selectedRoom,
+      nextMessages,
+      trimmed,
+    );
+    replaceRoom(roomAfterUserMessage);
+    persistRoom(roomAfterUserMessage);
+
+    const assistantMessageId = createId("message");
+    const assistantCreatedAt = nowLabel();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      createdAt: assistantCreatedAt,
+      isStreaming: true,
+    };
+    replaceRoom(
+      withRoomMessages(
+        roomAfterUserMessage,
+        [...nextMessages, assistantMessage],
+        trimmed,
+      ),
+    );
+
+    await generateAssistantReply({
+      assistantCreatedAt,
+      assistantMessageId,
+      character: selectedCharacter,
+      content: trimmed,
+      messages: nextMessages,
+      room: roomAfterUserMessage,
+    });
+  };
+
+  const handleSkipTurn = async () => {
+    if (
+      isSending ||
+      !selectedRoom ||
+      !selectedCharacter ||
+      selectedRoom.messages.at(-1)?.role !== "assistant"
+    ) {
+      return;
+    }
+
+    const assistantMessageId = createId("message");
+    const assistantCreatedAt = nowLabel();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      createdAt: assistantCreatedAt,
+      isStreaming: true,
+    };
+    replaceRoom(
+      withRoomMessages(
+        selectedRoom,
+        [...selectedRoom.messages, assistantMessage],
+        selectedRoom.lastMessage,
+      ),
+    );
+
+    await generateAssistantReply({
+      assistantCreatedAt,
+      assistantMessageId,
+      character: selectedCharacter,
+      content: "",
+      messages: selectedRoom.messages,
+      room: selectedRoom,
+      turnAction: "skip",
+    });
+  };
+
+  const handleOpenCustomPrompt = () => {
+    if (!selectedRoom) {
+      return;
+    }
+
+    setCustomPromptDraft(selectedRoom.customCharacterPrompt ?? "");
+    setCustomPromptAppendDraft("");
+    setIsCustomPromptOpen(true);
+  };
+
+  const persistCustomPrompt = (nextPrompt: string) => {
+    if (!selectedRoom) {
+      return;
+    }
+
+    const nextRoom: ChatRoom = {
+      ...selectedRoom,
+      customCharacterPrompt: nextPrompt || undefined,
+    };
+
+    replaceRoom(nextRoom);
+    persistRoom(nextRoom);
+    setCustomPromptDraft(nextPrompt);
+  };
+
+  const handleAppendCustomPrompt = () => {
+    if (!customPromptAppendDraft) {
+      return;
+    }
+
+    const nextPrompt = customPromptDraft
+      ? `${customPromptDraft}\n${customPromptAppendDraft}`
+      : customPromptAppendDraft;
+
+    persistCustomPrompt(nextPrompt);
+    setCustomPromptAppendDraft("");
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    if (!selectedRoom) {
+      return;
+    }
+
+    const nextMessages = selectedRoom.messages.filter(
+      (message) => message.id !== messageId,
+    );
+    const nextRoom = withRoomMessages(selectedRoom, nextMessages);
+    replaceRoom(nextRoom);
+    persistRoom(nextRoom);
+  };
+
+  const handleEditMessage = (messageId: string, content: string) => {
+    if (!selectedRoom) {
+      return;
+    }
+
+    const nextMessages = selectedRoom.messages.map((message) =>
+      message.id === messageId ? { ...message, content } : message,
+    );
+    const nextRoom = withRoomMessages(selectedRoom, nextMessages);
+    replaceRoom(nextRoom);
+    persistRoom(nextRoom);
+  };
+
+  const handleRegenerateMessage = async (messageId: string) => {
+    if (isSending || !selectedRoom || !selectedCharacter) {
+      return;
+    }
+
+    const messageIndex = selectedRoom.messages.findIndex(
+      (message) => message.id === messageId && message.role === "assistant",
+    );
+    if (messageIndex <= 0) {
+      return;
+    }
+
+    const baseMessages = selectedRoom.messages.slice(0, messageIndex);
+    const previousUserMessage = baseMessages
+      .slice()
+      .reverse()
+      .find((message) => message.role === "user");
+    if (!previousUserMessage) {
+      return;
+    }
+
+    const assistantCreatedAt = nowLabel();
+    const assistantMessage: Message = {
+      id: messageId,
+      role: "assistant",
+      content: "",
+      createdAt: assistantCreatedAt,
+      isStreaming: true,
+    };
+    const baseRoom = withRoomMessages(
+      selectedRoom,
+      baseMessages,
+      previousUserMessage.content,
+    );
+    replaceRoom(
+      withRoomMessages(
+        baseRoom,
+        [...baseMessages, assistantMessage],
+        previousUserMessage.content,
+      ),
+    );
+
+    await generateAssistantReply({
+      assistantCreatedAt,
+      assistantMessageId: messageId,
+      character: selectedCharacter,
+      content: previousUserMessage.content,
+      messages: baseMessages,
+      room: baseRoom,
+    });
+  };
+
+  if (!selectedRoom || !selectedCharacter) {
+    return (
+      <main className="grid min-h-dvh place-items-center bg-zeta-bg text-sm text-zeta-muted">
+        대화를 준비하는 중입니다.
+      </main>
+    );
+  }
+
+  const canSkipTurn = selectedRoom.messages.at(-1)?.role === "assistant";
+  const showAdminLink =
+    currentUser.name.trim().toLocaleLowerCase("en-US") ===
+    ADMIN_VISIBLE_ACCOUNT_NAME;
+
+  const sidebar = (
+    <ChatSidebar
+      characters={characters}
+      currentUser={currentUser}
+      rooms={rooms}
+      selectedRoomId={selectedRoom.id}
+      showAdminLink={showAdminLink}
+      onDeleteRoom={handleDeleteRoom}
+      onLogout={handleLogout}
+      onNewChat={handleNewChat}
+      onOpenSettings={() => setIsAccountSettingsOpen(true)}
+      onRestoreRoom={handleRestoreRoom}
+      onSelectRoom={handleSelectRoom}
+    />
+  );
+
+  const toggleLabel = isLeftCollapsed ? "사이드바 열기" : "사이드바 닫기";
+
+  return (
+    <main className="h-dvh overflow-hidden bg-zeta-bg text-zeta-text">
+      <div className="flex h-full min-h-0 relative">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-zeta-bg">
+          <MobileNav
+            character={selectedCharacter}
+            onOpenHome={() => router.push("/")}
+            onOpenRooms={() => setMobilePanel("rooms")}
+          />
+          <ChatHeader
+            character={selectedCharacter}
+            hasCustomCharacterPrompt={Boolean(
+              selectedRoom.customCharacterPrompt?.trim(),
+            )}
+            room={selectedRoom}
+            onEditCustomCharacterPrompt={handleOpenCustomPrompt}
+          />
+          <MessageList
+            character={selectedCharacter}
+            messages={selectedRoom.messages}
+            isSending={isSending}
+            onDelete={handleDeleteMessage}
+            onEdit={handleEditMessage}
+            onOpenCharacterSettings={handleOpenCustomPrompt}
+            onRegenerate={handleRegenerateMessage}
+          />
+          <ChatInput
+            canSkipTurn={canSkipTurn}
+            isSending={isSending}
+            onAbort={handleAbortGeneration}
+            onSend={handleSend}
+            onSkipTurn={handleSkipTurn}
+          />
+        </section>
+
+        <Link
+          aria-label="AURORA 홈"
+          className="absolute top-2 left-4 z-20 hidden items-center gap-2.5 rounded-xl bg-zeta-panel/90 px-3 py-2 text-base font-bold tracking-[-0.03em] text-zeta-text backdrop-blur transition hover:bg-zeta-panel focus-visible:ring-2 focus-visible:ring-zeta-accent focus-visible:ring-offset-2 md:inline-flex"
+          href="/"
+          title="AURORA 홈"
+        >
+          <span className="flex size-8 items-center justify-center rounded-lg bg-zeta-accent text-zeta-buttonText">
+            <Sparkles size={15} />
+          </span>
+          AURORA
+        </Link>
+
+        <button
+          aria-label={toggleLabel}
+          className="absolute top-1/2 left-0 z-20 hidden h-12 w-7 -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 border-zeta-line bg-zeta-panel/90 text-zeta-soft shadow-md backdrop-blur transition hover:bg-zeta-panel hover:text-zeta-text hover:shadow-lg focus-visible:ring-2 focus-visible:ring-zeta-accent focus-visible:ring-offset-2 md:flex"
+          onClick={() => setIsLeftCollapsed(!isLeftCollapsed)}
+          title={toggleLabel}
+          type="button"
+        >
+          {isLeftCollapsed ? (
+            <ChevronRight size={17} />
+          ) : (
+            <ChevronLeft size={17} />
+          )}
+        </button>
+      </div>
+
+      {!isLeftCollapsed ? (
+        <div className="fixed inset-0 z-40 hidden md:block">
+          <button
+            aria-label="닫기"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setIsLeftCollapsed(true)}
+            type="button"
+          />
+          <div
+            className="absolute inset-y-0 left-0 z-10 flex w-[20rem] max-w-[88vw] flex-col overflow-hidden border-r border-zeta-line bg-zeta-panel shadow-2xl animate-slide-in-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-zeta-line px-5 py-3.5">
+              <Link
+                className="flex items-center gap-2.5 rounded-lg transition hover:opacity-80"
+                href="/"
+              >
+                <span className="flex size-8 items-center justify-center rounded-lg bg-zeta-accent text-zeta-buttonText">
+                  <Sparkles size={15} />
+                </span>
+                <span className="text-sm font-bold tracking-[-0.03em] text-zeta-text">
+                  AURORA
+                </span>
+              </Link>
+              <button
+                aria-label="닫기"
+                className="inline-flex size-8 items-center justify-center rounded-lg text-zeta-soft transition hover:bg-zeta-panel2 hover:text-zeta-text"
+                onClick={() => setIsLeftCollapsed(true)}
+                type="button"
+              >
+                <X size={17} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">
+              {sidebar}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {mobilePanel ? (
+        <div className="fixed inset-0 z-50 flex bg-black/45 md:hidden">
+          <div
+            className="h-full w-[min(90vw,20rem)] max-w-full overflow-hidden border-r border-zeta-line bg-zeta-panel shadow-zeta"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {sidebar}
+          </div>
+          <button
+            aria-label="닫기"
+            className="flex-1"
+            onClick={() => setMobilePanel(null)}
+            type="button"
+          />
+        </div>
+      ) : null}
+
+      {isCustomPromptOpen ? (
+        <CustomPromptDialog
+          appendDraft={customPromptAppendDraft}
+          savedDraft={customPromptDraft}
+          onCancel={() => setIsCustomPromptOpen(false)}
+          onAppendChange={setCustomPromptAppendDraft}
+          onAppendSave={handleAppendCustomPrompt}
+          onClearAppend={() => setCustomPromptAppendDraft("")}
+        />
+      ) : null}
+
+      {isAccountSettingsOpen ? (
+        <AccountSettingsDialog
+          memories={memories}
+          user={currentUser}
+          onClose={() => setIsAccountSettingsOpen(false)}
+          onLogout={handleLogout}
+          onUserChange={setCurrentUser}
+        />
+      ) : null}
+    </main>
+  );
+}

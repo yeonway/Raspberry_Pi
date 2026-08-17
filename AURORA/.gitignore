@@ -1,0 +1,39 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+
+# Runtime data and local tool state
+data/
+data-test/
+.agents/
+.codex/
+.codex-backups/
+.codex-remote-attachments/
+.deploy-backups/
+node_modules_bak*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Build and cache output
+.next/
+dist/
+build/
+out/
+coverage/
+.cache/
+tmp/
+temp/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc

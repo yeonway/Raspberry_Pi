@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.25s ease-out;
+}
+
+:root {
+  color-scheme: dark;
+  --zeta-bg: 8 8 10;
+  --zeta-panel: 15 15 18;
+  --zeta-panel2: 31 31 35;
+  --zeta-line: 39 39 44;
+  --zeta-text: 240 240 245;
+  --zeta-muted: 176 176 186;
+  --zeta-soft: 125 125 136;
+  --zeta-accent: 109 45 246;
+  --zeta-accent-soft: 45 28 82;
+  --zeta-user-bubble: 139 92 246;
+  --zeta-user-bubble-text: 255 255 255;
+  --zeta-assistant-bubble: 31 31 35;
+  --zeta-assistant-bubble-text: 240 240 245;
+  --zeta-button-text: 255 255 255;
+  --zeta-error: 248 113 113;
+  --zeta-error-soft: 69 26 26;
+  --zeta-success: 52 211 153;
+  --zeta-success-soft: 15 58 40;
+  --zeta-info: 96 165 250;
+  --zeta-info-soft: 20 45 75;
+  --zeta-font-family: "Segoe UI", Pretendard, ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
+  --zeta-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+  --zeta-glow: 0 0 0 3px rgba(109, 45, 246, 0.24);
+  background: rgb(var(--zeta-bg));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: rgb(var(--zeta-bg));
+}
+
+@media (max-width: 767px) {
+  .zeta-mobile-shell {
+    background: rgb(var(--zeta-bg));
+  }
+
+  .zeta-message-scroll {
+    background: rgb(var(--zeta-bg));
+  }
+
+  .zeta-message-scroll > div {
+    max-width: 29.375rem;
+  }
+
+  .zeta-message-scroll .group {
+    gap: 0.4375rem;
+  }
+
+  .zeta-message-scroll .group > button > * {
+    width: 1.6875rem;
+    height: 1.6875rem;
+  }
+
+  .zeta-message-scroll .group > div {
+    max-width: calc(100% - 2.125rem);
+  }
+
+  .zeta-assistant-message {
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.875rem;
+    border-radius-bottom-left: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .zeta-message-scroll .group:has(.zeta-assistant-message) {
+    align-items: flex-start;
+  }
+
+  .zeta-message-scroll .group:has(.zeta-assistant-message) > div > div:last-child {
+    display: none;
+  }
+
+  .zeta-message-scroll .group:has(.bg-zeta-userBubble) > div > div:first-child {
+    border-radius: 1rem 1rem 0.25rem 1rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  .zeta-input-shell {
+    background: rgb(var(--zeta-bg));
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+body {
+  margin: 0;
+  color: rgb(var(--zeta-text));
+  font-family: var(--zeta-font-family);
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgb(var(--zeta-accent) / 0.18);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.75) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.75);
+  border-radius: 999px;
+}
+
+@layer components {
+  .input {
+    @apply h-11 w-full min-w-0 max-w-full rounded-lg border border-zeta-line bg-zeta-panel px-3 text-sm text-zeta-text outline-none transition placeholder:text-zeta-soft focus:border-zeta-accent;
+  }
+
+  .textarea {
+    @apply w-full min-w-0 max-w-full resize-y rounded-lg border border-zeta-line bg-zeta-panel px-3 py-2 text-sm leading-6 text-zeta-text outline-none transition placeholder:text-zeta-soft focus:border-zeta-accent;
+  }
+
+  .admin-page .input {
+    @apply h-10 text-xs sm:h-11 sm:text-sm;
+  }
+
+  .admin-page .textarea {
+    @apply px-2.5 py-1.5 text-xs leading-5 sm:px-3 sm:py-2 sm:text-sm sm:leading-6;
+  }
+}
